@@ -1,0 +1,1 @@
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd c:\ultragen2026\ultragen_manager\django_app; .\venv\Scripts\activate; python manage.py runserver"; cd c:\ultragen2026\ultragen_site_simple; npm run dev
