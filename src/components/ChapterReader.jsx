@@ -82,6 +82,9 @@ const ChapterReader = ({ chapter, onClose }) => {
                 if (data.tipo === 'maestra') {
                     console.warn("[DEBUG-VIP] Master Key detected! Global unlock activated.");
                     sessionStorage.setItem('master_unlocked', 'true');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
                 } else {
                     sessionStorage.setItem(`unlocked_${chapter.id}`, 'true');
                 }
