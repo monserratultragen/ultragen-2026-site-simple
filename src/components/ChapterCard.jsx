@@ -129,7 +129,7 @@ const ChapterCard = ({ chapter, onClick }) => {
                 gap: '5px',
                 zIndex: 4
             }}>
-                {isMasterActive && (isVip || isBlocked) && (
+                {isVip && (
                     <div style={{
                         backgroundColor: 'rgba(255, 215, 0, 0.8)',
                         color: 'black',
