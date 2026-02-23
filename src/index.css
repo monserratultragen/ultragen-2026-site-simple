@@ -25,7 +25,8 @@ body {
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  box-sizing: border-box;
 }
 
 *:hover {
@@ -193,7 +194,6 @@ select:focus {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  padding-left: 20px;
 }
 
 .nav-logo {
@@ -204,9 +204,7 @@ select:focus {
   align-items: flex-start;
 }
 
-.nav-logo:hover {
-  /* No animation */
-}
+
 
 .logo-text {
   font-size: 1.2rem;
@@ -231,6 +229,34 @@ select:focus {
   gap: 10px;
 }
 
+@media (max-width: 600px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .reader-header {
+    padding: 10px 15px;
+  }
+
+  .reader-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .reader-body {
+    padding: 20px 15px;
+    font-size: 1.05rem;
+    line-height: 1.6;
+    text-align: left;
+  }
+
+  .close-reader-btn {
+    top: 5px;
+    right: 10px;
+    font-size: 2rem;
+  }
+}
+
 /* Reader Modal */
 .reader-overlay {
   position: fixed;
@@ -247,6 +273,21 @@ select:focus {
   animation: slideUp 0.3s ease-out;
 }
 
+.reader-overlay.access-overlay {
+  align-items: center;
+  animation: fadeInOverlay 0.3s ease-out;
+}
+
+@keyframes fadeInOverlay {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes slideUp {
   from {
     transform: translateY(100%);
@@ -260,7 +301,7 @@ select:focus {
 .reader-content {
   width: 100%;
   max-width: 1200px;
-  height: 100vh;
+  height: 100%;
   background-color: #0a0a0a;
   border-top: 2px solid var(--accent-color);
   border-left: 1px solid #333;
@@ -272,16 +313,36 @@ select:focus {
   box-shadow: 0 -5px 20px var(--glow-color);
 }
 
+.reader-content.access-prompt {
+  height: auto;
+  align-self: center;
+  border-radius: 8px;
+  border-bottom: 1px solid #333;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .close-reader-btn {
   position: absolute;
-  top: 10px;
-  right: 20px;
+  top: 15px;
+  right: 15px;
   background: none;
   border: none;
   color: var(--accent-color);
   font-size: 2.5rem;
   cursor: pointer;
-  z-index: 10;
+  z-index: 2001;
 }
 
 .reader-header {
@@ -303,17 +364,60 @@ select:focus {
 
 .reader-body {
   flex: 1;
-  padding: 40px;
+  padding: 40px 12px;
   overflow-y: auto;
   font-family: var(--font-body);
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   line-height: 1.8;
   color: #e0e0e0;
   text-align: justify;
+  white-space: pre-wrap;
+  position: relative;
+  /* For copy button */
 }
 
 .reader-body p {
   margin-bottom: 1.5rem;
+}
+
+.copy-chapter-btn {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: 1px solid rgba(255, 105, 180, 0.2);
+  color: var(--accent-color);
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  font-family: var(--font-title);
+  cursor: pointer;
+  opacity: 0.3;
+  transition: all 0.3s ease;
+  border-radius: 4px;
+  z-index: 10;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.copy-chapter-btn:hover {
+  opacity: 1;
+  background: rgba(255, 105, 180, 0.1);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 10px var(--glow-color);
+}
+
+.copy-chapter-btn.copied {
+  opacity: 1;
+  color: #4caf50;
+  border-color: #4caf50;
+}
+
+.scene-marker {
+  color: #ffcf10;
+  opacity: 0.9;
+  letter-spacing: 0.5px;
+  display: block;
+  margin: 0;
 }
 
 /* Advanced Image Layouts */
@@ -517,5 +621,13 @@ select:focus {
     border-top: 1px solid rgba(255, 105, 180, 0.2);
     padding-left: 0;
     padding-top: 40px;
+  }
+}
+
+@media (max-width: 900px) {
+  .landing-container {
+    justify-content: center;
+    padding-right: 0;
+    padding: 20px;
   }
 }

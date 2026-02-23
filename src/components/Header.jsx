@@ -1,7 +1,8 @@
 import { auth } from '../firebase';
 
-const Header = () => {
+const Header = ({ onLogout }) => {
   const handleLogout = () => {
+    if (onLogout) onLogout();
     auth.signOut().catch(console.error);
     // State change in App.jsx will handle redirection to Landing
   };
@@ -10,8 +11,8 @@ const Header = () => {
     <nav className="navbar">
       <div className="container nav-content">
         <div className="nav-logo" onClick={handleLogout} title="Cerrar sesión / Ir al inicio">
-          <span className="logo-text">Diarios de Monserrat</span>
-          <span className="logo-sub">Sitio Simplificado</span>
+          <span className="logo-text">Novelas de Monserrat</span>
+          <span className="logo-sub">Versión ligera</span>
         </div>
       </div>
     </nav>

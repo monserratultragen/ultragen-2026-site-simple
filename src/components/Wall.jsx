@@ -1,35 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+
 import ChapterCard from './ChapterCard';
 import ChapterReader from './ChapterReader';
 
 import './Wall.css';
 
-const Wall = () => {
-    const [chapters, setChapters] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+const Wall = ({ chapters }) => {
     const [selectedChapter, setSelectedChapter] = useState(null);
     const [activeTab, setActiveTab] = useState(null);
 
-    useEffect(() => {
-        const fetchChapters = async () => {
-            try {
-                const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/capitulos/?es_demo=true`);
-                setChapters(response.data);
-            } catch (err) {
-                console.error("Error fetching chapters:", err);
-                setError("Error al cargar los capítulos.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchChapters();
-    }, []);
-
     // Grouping Logic
     const groupedData = chapters.reduce((acc, chapter) => {
+        // Skip inactive chapters
+        // Skip inactive chapters (treat absence of field as active for legacy compatibility if needed, but better to be strict if we expect it)
+        if (chapter.is_active === false) return acc;
+
         const diario = chapter.diario_nombre || 'Sin Diario';
         const tomo = chapter.tomo_nombre || 'Sin Tomo';
 
@@ -60,13 +45,25 @@ const Wall = () => {
     }, [diaryNames, activeTab]);
 
 
-    if (loading) return <div className="container">Cargando...</div>;
-    if (error) return <div className="container">{error}</div>;
+
 
     const activeDiaryData = activeTab ? groupedData[activeTab] : null;
 
     return (
         <div className="container">
+            {/* Mini Support Button */}
+            <div className="wall-mini-support">
+                <a
+                    href="secondlife:///app/agent/a8c18228-601a-4a14-b5f3-b00d3202c0ad/pay"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mini-support-btn"
+                    style={{ textDecoration: 'none' }}
+                >
+                    Invitame un cafecito 500L ✨💖
+                </a>
+            </div>
+
             {/* Tabs */}
             <div className="wall-tabs">
                 {diaryNames.map(diaryName => (
@@ -91,7 +88,7 @@ const Wall = () => {
                                 marginBottom: '15px',
                                 fontSize: '1.2rem'
                             }}>
-                                {tomoName} (capitulos de muestra)
+                                {tomoName}
                             </h3>
                             <div className="grid">
                                 {tomoChapters.map(chapter => (
@@ -109,6 +106,7 @@ const Wall = () => {
 
             {selectedChapter && (
                 <ChapterReader
+                    key={selectedChapter.id}
                     chapter={selectedChapter}
                     onClose={() => setSelectedChapter(null)}
                 />
