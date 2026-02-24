@@ -76,8 +76,14 @@ function App() {
 
         const chaptersPromise = axios.get(`${import.meta.env.VITE_API_URL}/api/capitulos/`)
           .then(res => {
-            // Sort by orden (asc) then id (desc)
-            const sorted = res.data.sort((a, b) => (a.orden - b.orden) || (b.id - a.id));
+            // Sort by: Diario Order -> Tomo Order -> Tomo ID -> Chapter Order -> Chapter ID
+            const sorted = res.data.sort((a, b) =>
+              (a.diario_orden - b.diario_orden) ||
+              (a.tomo_orden - b.tomo_orden) ||
+              (a.tomo_id - b.tomo_id) ||
+              (a.orden - b.orden) ||
+              (a.id - b.id)
+            );
             setChapters(sorted);
             setTargetProgress(prev => Math.min(prev + 10, 90));
           });

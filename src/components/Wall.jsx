@@ -11,8 +11,6 @@ const Wall = ({ chapters }) => {
 
     // Grouping Logic
     const groupedData = chapters.reduce((acc, chapter) => {
-        // Skip inactive chapters
-        // Skip inactive chapters (treat absence of field as active for legacy compatibility if needed, but better to be strict if we expect it)
         if (chapter.is_active === false) return acc;
 
         const diario = chapter.diario_nombre || 'Sin Diario';
@@ -21,6 +19,7 @@ const Wall = ({ chapters }) => {
         if (!acc[diario]) {
             acc[diario] = {
                 count: 0,
+                diario_orden: chapter.diario_orden || 0,
                 tomos: {}
             };
         }
@@ -28,14 +27,20 @@ const Wall = ({ chapters }) => {
         acc[diario].count++;
 
         if (!acc[diario].tomos[tomo]) {
-            acc[diario].tomos[tomo] = [];
+            acc[diario].tomos[tomo] = {
+                chapters: [],
+                tomo_orden: chapter.tomo_orden || 0,
+                tomo_id: chapter.tomo_id || 0
+            };
         }
-        acc[diario].tomos[tomo].push(chapter);
+        acc[diario].tomos[tomo].chapters.push(chapter);
         return acc;
     }, {});
 
-    // Get sorted diary names
-    const diaryNames = Object.keys(groupedData).sort();
+    // Get sorted diary names based on diario_orden
+    const diaryNames = Object.keys(groupedData).sort((a, b) => {
+        return groupedData[a].diario_orden - groupedData[b].diario_orden;
+    });
 
     // Set active tab if not set and we have data
     useEffect(() => {
@@ -44,10 +49,14 @@ const Wall = ({ chapters }) => {
         }
     }, [diaryNames, activeTab]);
 
-
-
-
     const activeDiaryData = activeTab ? groupedData[activeTab] : null;
+
+    // Get sorted tomos for the active diary
+    const sortedTomoEntries = activeDiaryData
+        ? Object.entries(activeDiaryData.tomos).sort((a, b) => {
+            return (a[1].tomo_orden - b[1].tomo_orden) || (a[1].tomo_id - b[1].tomo_id);
+        })
+        : [];
 
     return (
         <div className="container">
@@ -81,7 +90,7 @@ const Wall = ({ chapters }) => {
             {/* Content for Active Tab */}
             {activeDiaryData && (
                 <div className="diary-content">
-                    {Object.entries(activeDiaryData.tomos).map(([tomoName, tomoChapters]) => (
+                    {sortedTomoEntries.map(([tomoName, tomoData]) => (
                         <div key={tomoName} style={{ marginBottom: '30px' }}>
                             <h3 style={{
                                 color: 'var(--accent-color)',
@@ -91,7 +100,7 @@ const Wall = ({ chapters }) => {
                                 {tomoName}
                             </h3>
                             <div className="grid">
-                                {tomoChapters.map(chapter => (
+                                {tomoData.chapters.map(chapter => (
                                     <ChapterCard
                                         key={chapter.id}
                                         chapter={chapter}
