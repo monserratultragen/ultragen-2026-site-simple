@@ -67,9 +67,8 @@ const Wall = ({ chapters }) => {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mini-support-btn"
-                    style={{ textDecoration: 'none' }}
                 >
-                    Invitame un cafecito 500L ✨💖
+                    <span>Invitame un cafecito 500L ✨💖</span>
                 </a>
             </div>
 

@@ -114,38 +114,46 @@ const SupportButton = () => {
             {isSparkling && <div className="sparkles"></div>}
 
             <div style={{
-                width: '85px',
-                height: '85px',
+                width: '110px',
+                height: '110px',
                 borderRadius: '50%',
                 overflow: 'hidden',
-                border: '2px solid #ff85a2',
                 boxShadow: isSparkling ? '0 0 20px #fff700' : '0 4px 12px rgba(255, 133, 162, 0.2)',
                 backgroundColor: 'rgba(51, 51, 51, 0.5)',
-                position: 'relative'
+                position: 'relative',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                padding: '4px'
             }}>
+                <div className="traveling-glow"></div>
                 <img
                     src={monseAvatar}
                     alt="Monse"
                     style={{
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover'
+                        objectFit: 'cover',
+                        borderRadius: '50%',
+                        position: 'relative',
+                        zIndex: 2
                     }}
                 />
             </div>
             <div style={{
                 backgroundColor: 'rgba(255, 133, 162, 0.6)',
                 color: 'white',
-                padding: '4px 14px',
-                borderRadius: '15px',
-                fontSize: '0.75rem',
-                fontWeight: '400',
+                padding: '6px 18px',
+                borderRadius: '20px',
+                fontSize: '0.9rem',
+                fontWeight: '500',
                 fontFamily: 'system-ui, -apple-system, sans-serif',
                 backdropFilter: 'blur(8px)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 whiteSpace: 'nowrap',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                letterSpacing: '0.5px'
+                letterSpacing: '0.5px',
+                marginTop: '4px'
             }}>
                 Invitame un cafecito 500L ✨💖
             </div>
@@ -175,6 +183,18 @@ const SupportButton = () => {
                         0% { transform: scale(1) rotate(0deg); opacity: 0; }
                         50% { opacity: 1; }
                         100% { transform: scale(1.2) rotate(15deg); opacity: 0; }
+                    }
+                    .traveling-glow {
+                        position: absolute;
+                        width: 150%;
+                        height: 150%;
+                        background: conic-gradient(from 0deg, transparent 70%, rgba(255, 247, 0, 0.8) 80%, #ff85a2 100%);
+                        animation: rotate-glow 2s linear infinite;
+                        z-index: 1;
+                    }
+                    @keyframes rotate-glow {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(360deg); }
                     }
                 `}
             </style>
