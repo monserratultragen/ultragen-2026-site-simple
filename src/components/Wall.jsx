@@ -9,6 +9,7 @@ import './Wall.css';
 const Wall = ({ chapters }) => {
     const [selectedChapter, setSelectedChapter] = useState(null);
     const [activeTab, setActiveTab] = useState(null);
+    const [activeTomoTab, setActiveTomoTab] = useState(null);
     const hasMasterKey = sessionStorage.getItem('master_unlocked') === 'true';
 
     // Grouping Logic
@@ -61,6 +62,21 @@ const Wall = ({ chapters }) => {
         })
         : [];
 
+    // Automatically set the first Tomo as active when diary changes
+    useEffect(() => {
+        if (!isAITabActive && sortedTomoEntries.length > 0) {
+            // Check if current activeTomoTab exists in new diary, if not, reset to first
+            const hasCurrentTomo = sortedTomoEntries.some(([tomoName]) => tomoName === activeTomoTab);
+            if (!hasCurrentTomo || !activeTomoTab) {
+                setActiveTomoTab(sortedTomoEntries[0][0]);
+            }
+        } else {
+            setActiveTomoTab(null);
+        }
+    }, [activeTab, sortedTomoEntries, isAITabActive]);
+
+    const activeTomoData = activeTomoTab && activeDiaryData ? activeDiaryData.tomos[activeTomoTab] : null;
+
     return (
         <div className="container">
             {/* Mini Support Button */}
@@ -76,26 +92,31 @@ const Wall = ({ chapters }) => {
             </div>
 
             {/* Tabs */}
-            <div className="wall-tabs">
-                {diaryNames.map(diaryName => (
-                    <button
-                        key={diaryName}
-                        className={`wall-tab ${activeTab === diaryName ? 'active' : ''}`}
-                        onClick={() => setActiveTab(diaryName)}
-                    >
-                        {diaryName}
-                        <span className="wall-tab-count">({groupedData[diaryName].count})</span>
-                    </button>
-                ))}
-                {hasMasterKey && (
-                    <button
-                        className={`wall-tab wall-tab-ai ${isAITabActive ? 'active' : ''}`}
-                        onClick={() => setActiveTab('AI_BACKUPS')}
-                        title="Solo visible por Clave Maestra"
-                    >
-                        ✨ AI Backups
-                    </button>
-                )}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '30px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '10px' }}>
+                <span style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 'bold' }}>Diarios:</span>
+                <div className="wall-tabs" style={{ marginBottom: 0, paddingBottom: 0, borderBottom: 'none' }}>
+                    {diaryNames.map(diaryName => (
+                        <button
+                            key={diaryName}
+                            className={`wall-tab ${activeTab === diaryName ? 'active' : ''}`}
+                            onClick={() => setActiveTab(diaryName)}
+                            title={`${diaryName} (${groupedData[diaryName].count} capítulos)`}
+                            style={{ padding: '8px 12px' }}
+                        >
+                            {groupedData[diaryName].diario_orden - 1}
+                        </button>
+                    ))}
+                    {hasMasterKey && (
+                        <button
+                            className={`wall-tab wall-tab-ai ${isAITabActive ? 'active' : ''}`}
+                            onClick={() => setActiveTab('AI_BACKUPS')}
+                            title="Solo visible por Clave Maestra"
+                            style={{ padding: '8px 12px' }}
+                        >
+                            ✨ AI
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Content for Active Tab */}
@@ -103,17 +124,34 @@ const Wall = ({ chapters }) => {
                 <AIGallery />
             ) : activeDiaryData && (
                 <div className="diary-content">
-                    {sortedTomoEntries.map(([tomoName, tomoData]) => (
-                        <div key={tomoName} style={{ marginBottom: '30px' }}>
+                    {/* Tomo Sub-Navigation */}
+                    {sortedTomoEntries.length > 0 && (
+                        <div className="tomo-tabs">
+                            {sortedTomoEntries.map(([tomoName, tomoData]) => (
+                                <button
+                                    key={tomoName}
+                                    className={`tomo-tab ${activeTomoTab === tomoName ? 'active' : ''}`}
+                                    onClick={() => setActiveTomoTab(tomoName)}
+                                >
+                                    {tomoName} ({tomoData.chapters.length})
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Active Tomo Chapters */}
+                    {activeTomoData && (
+                        <div>
                             <h3 style={{
                                 color: 'var(--accent-color)',
                                 marginBottom: '15px',
-                                fontSize: '1.2rem'
+                                fontSize: '1.2rem',
+                                textAlign: 'center'
                             }}>
-                                {tomoName}
+                                {activeTomoTab}
                             </h3>
                             <div className="grid">
-                                {tomoData.chapters.map(chapter => (
+                                {activeTomoData.chapters.map(chapter => (
                                     <ChapterCard
                                         key={chapter.id}
                                         chapter={chapter}
@@ -122,7 +160,7 @@ const Wall = ({ chapters }) => {
                                 ))}
                             </div>
                         </div>
-                    ))}
+                    )}
                 </div>
             )}
 
