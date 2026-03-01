@@ -107,6 +107,24 @@
   font-weight: 600;
 }
 
+/* AI Backups custom tab styling */
+.wall-tab-ai {
+  color: gold;
+  border-bottom: 2px solid transparent;
+}
+
+.wall-tab-ai:hover {
+  background-color: rgba(255, 215, 0, 0.05);
+  color: #fff;
+  border-color: transparent;
+}
+
+.wall-tab-ai.active {
+  color: gold;
+  border-bottom: 2px solid gold;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
 /* Count badge inside tab */
 .wall-tab-count {
   font-size: 0.85em;

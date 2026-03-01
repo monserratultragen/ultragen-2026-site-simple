@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 
 import ChapterCard from './ChapterCard';
 import ChapterReader from './ChapterReader';
+import AIGallery from './AIGallery';
 
 import './Wall.css';
 
 const Wall = ({ chapters }) => {
     const [selectedChapter, setSelectedChapter] = useState(null);
     const [activeTab, setActiveTab] = useState(null);
+    const hasMasterKey = sessionStorage.getItem('master_unlocked') === 'true';
 
     // Grouping Logic
     const groupedData = chapters.reduce((acc, chapter) => {
@@ -49,7 +51,8 @@ const Wall = ({ chapters }) => {
         }
     }, [diaryNames, activeTab]);
 
-    const activeDiaryData = activeTab ? groupedData[activeTab] : null;
+    const isAITabActive = activeTab === 'AI_BACKUPS';
+    const activeDiaryData = (!isAITabActive && activeTab) ? groupedData[activeTab] : null;
 
     // Get sorted tomos for the active diary
     const sortedTomoEntries = activeDiaryData
@@ -84,10 +87,21 @@ const Wall = ({ chapters }) => {
                         <span className="wall-tab-count">({groupedData[diaryName].count})</span>
                     </button>
                 ))}
+                {hasMasterKey && (
+                    <button
+                        className={`wall-tab wall-tab-ai ${isAITabActive ? 'active' : ''}`}
+                        onClick={() => setActiveTab('AI_BACKUPS')}
+                        title="Solo visible por Clave Maestra"
+                    >
+                        ✨ AI Backups
+                    </button>
+                )}
             </div>
 
             {/* Content for Active Tab */}
-            {activeDiaryData && (
+            {isAITabActive ? (
+                <AIGallery />
+            ) : activeDiaryData && (
                 <div className="diary-content">
                     {sortedTomoEntries.map(([tomoName, tomoData]) => (
                         <div key={tomoName} style={{ marginBottom: '30px' }}>
