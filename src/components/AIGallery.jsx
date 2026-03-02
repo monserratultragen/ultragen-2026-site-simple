@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getImageUrl } from '../utils/imageUtils';
+import AIBackupsTable from './AIBackupsTable';
 
-const AIGallery = () => {
+const AIGallery = ({ chapters }) => {
     const [prompts, setPrompts] = useState([]);
     const [images, setImages] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -34,6 +35,9 @@ const AIGallery = () => {
 
     return (
         <div style={{ padding: '20px 0' }}>
+            {/* New Backups Table Section */}
+            <AIBackupsTable chapters={chapters || []} />
+
             {/* Prompts Section */}
             <div style={{ marginBottom: '50px' }}>
                 <h3 style={{

@@ -8,9 +8,10 @@
 .mini-support-btn {
   background: rgba(30, 30, 30, 0.8);
   color: #ff85a2;
-  padding: 8px 18px;
-  border-radius: 20px;
-  font-size: 0.95rem;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  font-size: 1.2rem;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -21,7 +22,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 500;
   border: none;
 }
 
@@ -45,18 +45,21 @@
   right: 2px;
   bottom: 2px;
   background: rgba(30, 30, 30, 0.95);
-  border-radius: 18px;
+  border-radius: 50%;
   z-index: 1;
 }
 
 .mini-support-btn>span {
   position: relative;
   z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mini-support-btn:hover {
   color: #fff;
-  transform: scale(1.02);
+  transform: scale(1.1);
 }
 
 @keyframes rotate-glow {
@@ -178,4 +181,103 @@
   border-color: #ff4d4d;
   color: #fff;
   font-weight: 500;
+}
+
+/* New Navigation Buttons */
+.circle-nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #bbb;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  font-size: 1.05rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.circle-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.circle-nav-btn.active {
+  background: rgba(255, 77, 77, 0.2);
+  border-color: #ff4d4d;
+  color: #fff;
+  font-weight: bold;
+}
+
+.pill-nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #bbb;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 21px;
+  font-size: 1.05rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pill-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.pill-nav-btn.active {
+  background: rgba(255, 77, 77, 0.2);
+  border-color: #ff4d4d;
+  color: #fff;
+  font-weight: bold;
+}
+
+.pill-ai-btn {
+  color: gold;
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.pill-ai-btn:hover {
+  background: rgba(255, 215, 0, 0.1);
+  color: #fff;
+}
+
+.pill-ai-btn.active {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: gold;
+  color: gold;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+/* Mobile Optimizations */
+@media (max-width: 600px) {
+  .circle-nav-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+  }
+
+  .pill-nav-btn {
+    height: 32px;
+    padding: 0 10px;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+  }
+
+  .nav-group {
+    gap: 2px !important;
+    /* Reduce space between circles dramatically */
+  }
 }

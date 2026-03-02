@@ -31,7 +31,7 @@ const GalleryLayout = ({ images }) => {
 };
 
 
-const ChapterReader = ({ chapter, onClose }) => {
+const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
     const [copied, setCopied] = useState(false);
@@ -82,9 +82,7 @@ const ChapterReader = ({ chapter, onClose }) => {
                 if (data.tipo === 'maestra') {
                     console.warn("[DEBUG-VIP] Master Key detected! Global unlock activated.");
                     sessionStorage.setItem('master_unlocked', 'true');
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
+                    if (onMasterUnlock) onMasterUnlock();
                 } else {
                     sessionStorage.setItem(`unlocked_${chapter.id}`, 'true');
                 }

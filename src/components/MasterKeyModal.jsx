@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const MasterKeyModal = ({ onClose }) => {
+const MasterKeyModal = ({ onClose, onMasterUnlock }) => {
     const [accessCode, setAccessCode] = useState('');
     const [validating, setValidating] = useState(false);
     const [error, setError] = useState('');
@@ -26,8 +26,9 @@ const MasterKeyModal = ({ onClose }) => {
                     sessionStorage.setItem('master_unlocked', 'true');
                     setSuccess(true);
                     setTimeout(() => {
-                        window.location.reload(); // Reload to apply global unlock
-                    }, 1500);
+                        if (onMasterUnlock) onMasterUnlock();
+                        onClose();
+                    }, 1000);
                 } else {
                     setError('Esta no es una clave maestra. Usa esta clave directamente en el capítulo que quieras leer.');
                 }

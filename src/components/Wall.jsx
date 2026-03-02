@@ -6,11 +6,17 @@ import AIGallery from './AIGallery';
 
 import './Wall.css';
 
-const Wall = ({ chapters }) => {
+const Wall = ({ chapters, onOpenSupportModal }) => {
     const [selectedChapter, setSelectedChapter] = useState(null);
     const [activeTab, setActiveTab] = useState(null);
     const [activeTomoTab, setActiveTomoTab] = useState(null);
-    const hasMasterKey = sessionStorage.getItem('master_unlocked') === 'true';
+    const [hasMasterKey, setHasMasterKey] = useState(
+        () => sessionStorage.getItem('master_unlocked') === 'true'
+    );
+
+    const handleMasterUnlock = () => {
+        setHasMasterKey(true);
+    };
 
     // Grouping Logic
     const groupedData = chapters.reduce((acc, chapter) => {
@@ -65,15 +71,11 @@ const Wall = ({ chapters }) => {
     // Automatically set the first Tomo as active when diary changes
     useEffect(() => {
         if (!isAITabActive && sortedTomoEntries.length > 0) {
-            // Check if current activeTomoTab exists in new diary, if not, reset to first
-            const hasCurrentTomo = sortedTomoEntries.some(([tomoName]) => tomoName === activeTomoTab);
-            if (!hasCurrentTomo || !activeTomoTab) {
-                setActiveTomoTab(sortedTomoEntries[0][0]);
-            }
+            setActiveTomoTab(sortedTomoEntries[0][0]);
         } else {
             setActiveTomoTab(null);
         }
-    }, [activeTab, sortedTomoEntries, isAITabActive]);
+    }, [activeTab, isAITabActive]); // Remove sortedTomoEntries from deps to only trigger on tab change
 
     const activeTomoData = activeTomoTab && activeDiaryData ? activeDiaryData.tomos[activeTomoTab] : null;
 
@@ -81,63 +83,72 @@ const Wall = ({ chapters }) => {
         <div className="container">
             {/* Mini Support Button */}
             <div className="wall-mini-support">
-                <a
-                    href="secondlife:///app/agent/a8c18228-601a-4a14-b5f3-b00d3202c0ad/pay"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <button
                     className="mini-support-btn"
+                    title="Invitame un cafecito 500L ✨💖"
+                    onClick={onOpenSupportModal}
                 >
-                    <span>Invitame un cafecito 500L ✨💖</span>
-                </a>
+                    <span>☕</span>
+                </button>
             </div>
 
-            {/* Tabs */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '30px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '10px' }}>
-                <span style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 'bold' }}>Diarios:</span>
-                <div className="wall-tabs" style={{ marginBottom: 0, paddingBottom: 0, borderBottom: 'none' }}>
-                    {diaryNames.map(diaryName => (
+            {/* Menus Section (Before Division Line) */}
+            <div style={{ marginBottom: '30px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '20px' }}>
+                {/* Diarios Navigation */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: (!isAITabActive && sortedTomoEntries.length > 0) ? '15px' : '0' }}>
+                    <span style={{ color: '#fff', fontSize: '1rem', fontWeight: 'bold', flexShrink: 0 }}>Diarios:</span>
+                    <div className="nav-group" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {diaryNames.map(diaryName => (
+                            <button
+                                key={diaryName}
+                                className={`circle-nav-btn ${activeTab === diaryName ? 'active' : ''}`}
+                                onClick={() => setActiveTab(diaryName)}
+                                title={`${diaryName} (${groupedData[diaryName].count} capítulos)`}
+                            >
+                                {groupedData[diaryName].diario_orden - 1}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Tomos Navigation */}
+                {!isAITabActive && sortedTomoEntries.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '15px' }}>
+                        <span style={{ color: '#fff', fontSize: '1rem', fontWeight: 'bold', flexShrink: 0 }}>Tomos:</span>
+                        <div className="nav-group" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                            {sortedTomoEntries.map(([tomoName, tomoData]) => (
+                                <button
+                                    key={tomoName}
+                                    className={`circle-nav-btn ${activeTomoTab === tomoName ? 'active' : ''}`}
+                                    onClick={() => setActiveTomoTab(tomoName)}
+                                    title={`${tomoName} (${tomoData.chapters.length} capítulos)`}
+                                >
+                                    {tomoData.tomo_orden}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* AI / Master Content Switch */}
+                {hasMasterKey && (
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
                         <button
-                            key={diaryName}
-                            className={`wall-tab ${activeTab === diaryName ? 'active' : ''}`}
-                            onClick={() => setActiveTab(diaryName)}
-                            title={`${diaryName} (${groupedData[diaryName].count} capítulos)`}
-                            style={{ padding: '8px 12px' }}
-                        >
-                            {groupedData[diaryName].diario_orden - 1}
-                        </button>
-                    ))}
-                    {hasMasterKey && (
-                        <button
-                            className={`wall-tab wall-tab-ai ${isAITabActive ? 'active' : ''}`}
+                            className={`pill-nav-btn pill-ai-btn ${isAITabActive ? 'active' : ''}`}
                             onClick={() => setActiveTab('AI_BACKUPS')}
                             title="Solo visible por Clave Maestra"
-                            style={{ padding: '8px 12px' }}
                         >
-                            ✨ AI
+                            ✨ Backups AI
                         </button>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
             {/* Content for Active Tab */}
             {isAITabActive ? (
-                <AIGallery />
+                <AIGallery chapters={chapters} />
             ) : activeDiaryData && (
                 <div className="diary-content">
-                    {/* Tomo Sub-Navigation */}
-                    {sortedTomoEntries.length > 0 && (
-                        <div className="tomo-tabs">
-                            {sortedTomoEntries.map(([tomoName, tomoData]) => (
-                                <button
-                                    key={tomoName}
-                                    className={`tomo-tab ${activeTomoTab === tomoName ? 'active' : ''}`}
-                                    onClick={() => setActiveTomoTab(tomoName)}
-                                >
-                                    {tomoName} ({tomoData.chapters.length})
-                                </button>
-                            ))}
-                        </div>
-                    )}
 
                     {/* Active Tomo Chapters */}
                     {activeTomoData && (
@@ -148,7 +159,7 @@ const Wall = ({ chapters }) => {
                                 fontSize: '1.2rem',
                                 textAlign: 'center'
                             }}>
-                                {activeTomoTab}
+                                {activeTomoTab} ({activeTomoData.chapters.length} capítulos)
                             </h3>
                             <div className="grid">
                                 {activeTomoData.chapters.map(chapter => (
@@ -169,6 +180,7 @@ const Wall = ({ chapters }) => {
                     key={selectedChapter.id}
                     chapter={selectedChapter}
                     onClose={() => setSelectedChapter(null)}
+                    onMasterUnlock={handleMasterUnlock}
                 />
             )}
         </div>

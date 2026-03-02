@@ -7,6 +7,7 @@ import Guestbook from './components/Guestbook';
 import LoadingScreen from './components/LoadingScreen';
 import WelcomeModal from './components/WelcomeModal';
 import SupportButton from './components/SupportButton';
+import SupportModal from './components/SupportModal';
 import './index.css';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
   const [chapters, setChapters] = useState([]);
   const [guestbookEntries, setGuestbookEntries] = useState([]);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
 
   // Smooth Progress Effect
   useEffect(() => {
@@ -153,13 +155,13 @@ function App() {
           }} />
           <div className="main-layout">
             <div className="content-column">
-              <Wall chapters={chapters} />
+              <Wall chapters={chapters} onOpenSupportModal={() => setShowSupportModal(true)} />
             </div>
             <div className="guestbook-column">
               <Guestbook entries={guestbookEntries} />
             </div>
           </div>
-          <SupportButton />
+          <SupportButton onOpenModal={() => setShowSupportModal(true)} />
         </>
       )}
 
@@ -174,6 +176,10 @@ function App() {
           onAccept={handleWelcomeAccept}
           onCancel={handleWelcomeCancel}
         />
+      )}
+
+      {showSupportModal && (
+        <SupportModal onClose={() => setShowSupportModal(false)} />
       )}
     </div>
   );

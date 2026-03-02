@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import monseAvatar from '../monse.png';
 
-const SupportButton = () => {
+const SupportButton = ({ onOpenModal }) => {
     const [isVisible, setIsVisible] = useState(false);
     const [isSparkling, setIsSparkling] = useState(false);
 
@@ -88,10 +88,8 @@ const SupportButton = () => {
     if (!isVisible && !isSparkling) return null;
 
     return (
-        <a
-            href="secondlife:///app/agent/a8c18228-601a-4a14-b5f3-b00d3202c0ad/pay"
-            target="_blank"
-            rel="noopener noreferrer"
+        <div
+            onClick={onOpenModal}
             className={`support-button-container ${isSparkling ? 'tinkerbell' : ''}`}
             style={{
                 position: 'fixed',
@@ -198,7 +196,7 @@ const SupportButton = () => {
                     }
                 `}
             </style>
-        </a>
+        </div>
     );
 };
 
