@@ -1,0 +1,238 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { getImageUrl } from '../utils/imageUtils';
+import AIBackupsTable from './AIBackupsTable';
+
+const BackupsPage = ({ chapters, onNavigate }) => {
+    const [activeTab, setActiveTab] = useState('chapter_backups'); // Default to chapter backups
+    const [prompts, setPrompts] = useState([]);
+    const [images, setImages] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+
+        const fetchData = async () => {
+            try {
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+                const [promptsRes, imagesRes] = await Promise.all([
+                    axios.get(`${apiUrl}/api/prompts-ai/`),
+                    axios.get(`${apiUrl}/api/imagenes-ai-base/`)
+                ]);
+                setPrompts(promptsRes.data);
+                setImages(imagesRes.data);
+            } catch (err) {
+                console.error("Error fetching AI data:", err);
+                setError("No se pudieron cargar los datos de AI.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+        // Ensure scroll is enabled for this page
+        document.body.style.overflow = 'unset';
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const tabStyle = (isActive) => ({
+        padding: isMobile ? '8px 6px' : '12px 24px',
+        cursor: 'pointer',
+        borderBottom: isActive ? '3px solid var(--accent-color, #ff4c4c)' : '3px solid transparent',
+        color: isActive ? 'var(--accent-color, #ff4c4c)' : '#888',
+        fontWeight: 'bold',
+        fontSize: isMobile ? '0.65rem' : '0.9rem',
+        transition: 'all 0.3s ease',
+        background: 'none',
+        borderLeft: 'none',
+        borderRight: 'none',
+        borderTop: 'none',
+        outline: 'none',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+        flex: isMobile ? '1' : '0 1 auto',
+        textAlign: 'center',
+        whiteSpace: 'nowrap'
+    });
+
+    if (loading) return (
+        <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#aaa' }}>
+            <p>Cargando archivos clasificados...</p>
+        </div>
+    );
+
+    return (
+        <div className="container" style={{
+            paddingTop: isMobile ? '20px' : '40px',
+            paddingBottom: '150px', // Extra padding at the bottom
+            position: 'relative'
+        }}>
+            {/* Header / Back Navigation */}
+            <div style={{
+                display: 'flex',
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: isMobile ? '10px' : '40px',
+                gap: '15px',
+                paddingInline: '20px'
+            }}>
+                <h1 style={{ margin: 0, fontSize: isMobile ? '0.8rem' : '2rem', textAlign: 'center' }}>BACKUPS AI</h1>
+                <button
+                    onClick={() => onNavigate('home')}
+                    className="btn"
+                    style={{ padding: '8px 16px', fontSize: '0.8rem' }}
+                >
+                    Volver
+                </button>
+            </div>
+
+            {/* Tabs Navigation */}
+            <div style={{
+                display: 'flex',
+                gap: isMobile ? '5px' : '20px',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                marginBottom: isMobile ? '25px' : '40px',
+                flexWrap: 'wrap',
+                justifyContent: 'center'
+            }}>
+                <button
+                    onClick={() => setActiveTab('base_images')}
+                    style={tabStyle(activeTab === 'base_images')}
+                >
+                    img base
+                </button>
+                <button
+                    onClick={() => setActiveTab('featured_prompts')}
+                    style={tabStyle(activeTab === 'featured_prompts')}
+                >
+                    prompts vip
+                </button>
+                <button
+                    onClick={() => setActiveTab('chapter_backups')}
+                    style={tabStyle(activeTab === 'chapter_backups')}
+                >
+                    prompt lista
+                </button>
+            </div>
+
+            {/* Error State */}
+            {error && <div style={{ color: '#ff4d4d', textAlign: 'center', padding: '40px' }}>{error}</div>}
+
+            {/* Tab Content */}
+            {!error && (
+                <div>
+                    {activeTab === 'base_images' && (
+                        <div>
+                            <h3 style={{ color: '#aaa', marginBottom: '20px', textAlign: 'center', fontSize: isMobile ? '1rem' : '1.1rem' }}>Galeria de imagenes</h3>
+                            {images.length === 0 ? (
+                                <p style={{ color: '#666', fontStyle: 'italic', textAlign: 'center' }}>No hay imagenes registradas aun.</p>
+                            ) : (
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(180px, 1fr))',
+                                    gap: isMobile ? '10px' : '20px',
+                                    justifyContent: 'center'
+                                }}>
+                                    {images.map(item => (
+                                        <div key={item.id} style={{
+                                            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                                            borderRadius: '8px',
+                                            overflow: 'hidden',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            transition: 'transform 0.2s',
+                                        }}
+                                            onMouseOver={(e) => !isMobile && (e.currentTarget.style.transform = 'scale(1.02)')}
+                                            onMouseOut={(e) => !isMobile && (e.currentTarget.style.transform = 'scale(1)')}
+                                        >
+                                            <div style={{ width: '100%', height: isMobile ? '200px' : '270px', backgroundColor: '#111', overflow: 'hidden' }}>
+                                                {item.imagen ? (
+                                                    <img
+                                                        src={getImageUrl(item.imagen)}
+                                                        alt={item.titulo}
+                                                        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
+                                                    />
+                                                ) : (
+                                                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '0.8rem' }}>Sin imagen</div>
+                                                )}
+                                            </div>
+                                            <div style={{ padding: isMobile ? '8px' : '12px' }}>
+                                                <h4 style={{ color: '#fff', fontSize: isMobile ? '0.8rem' : '0.95rem', margin: '0 0 5px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.titulo}</h4>
+                                                {item.notas && <p style={{ color: '#888', fontSize: '0.75rem', margin: '0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.notas}</p>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'featured_prompts' && (
+                        <div>
+                            <h3 style={{ color: '#aaa', marginBottom: '20px', textAlign: 'center' }}>Lista de Prompts AI</h3>
+                            {prompts.length === 0 ? (
+                                <p style={{ color: '#666', fontStyle: 'italic', textAlign: 'center' }}>No hay prompts registrados aún.</p>
+                            ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                                    {prompts.map(prompt => (
+                                        <div key={prompt.id} style={{
+                                            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                                            borderRadius: '8px',
+                                            padding: isMobile ? '15px' : '20px',
+                                            display: 'flex',
+                                            flexDirection: 'column'
+                                        }}>
+                                            <h4 style={{ color: 'var(--accent-color)', fontSize: isMobile ? '1rem' : '1.2rem', margin: '0 0 15px 0' }}>{prompt.titulo}</h4>
+                                            <div style={{
+                                                backgroundColor: '#000',
+                                                padding: '15px',
+                                                borderRadius: '4px',
+                                                color: '#ccc',
+                                                fontFamily: 'monospace',
+                                                fontSize: isMobile ? '0.8rem' : '0.9rem',
+                                                marginBottom: '15px',
+                                                overflowY: 'auto',
+                                                maxHeight: '200px',
+                                                border: '1px solid #333'
+                                            }}>
+                                                {prompt.prompt}
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(prompt.prompt).then(() => {
+                                                        alert('Prompt copiado al portapapeles');
+                                                    });
+                                                }}
+                                                className="btn"
+                                                style={{ width: '100%', marginTop: 'auto', fontSize: '0.8rem' }}
+                                            >
+                                                Copiar Prompt
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'chapter_backups' && (
+                        <div className="card" style={{
+                            padding: isMobile ? '12px' : '20px'
+                        }}>
+                            <h3 style={{ color: '#aaa', marginBottom: '25px', textAlign: 'center', fontSize: isMobile ? '1rem' : '1.1rem' }}>Respaldos por Capitulo</h3>
+                            <AIBackupsTable chapters={chapters || []} />
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default BackupsPage;

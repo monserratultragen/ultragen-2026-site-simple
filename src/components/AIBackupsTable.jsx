@@ -8,9 +8,16 @@ const AIBackupsTable = ({ chapters }) => {
     const [loading, setLoading] = useState(false);
     const [filteredChapters, setFilteredChapters] = useState([]);
     const [initialLoading, setInitialLoading] = useState(true);
+    const [selectedDiario, setSelectedDiario] = useState("");
+    const [selectedTomo, setSelectedTomo] = useState("");
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
     useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+
         const fetchExistingPrompts = async () => {
             try {
                 // Fetch all prompts to see which chapters have them
@@ -45,6 +52,8 @@ const AIBackupsTable = ({ chapters }) => {
         } else {
             setInitialLoading(false);
         }
+
+        return () => window.removeEventListener('resize', handleResize);
     }, [chapters, apiUrl]);
 
     const viewPrompts = async (chapter) => {
@@ -63,57 +72,128 @@ const AIBackupsTable = ({ chapters }) => {
     };
 
     if (initialLoading) return <div style={{ color: '#888', textAlign: 'center', padding: '20px' }}>Analizando respaldos...</div>;
-    if (filteredChapters.length === 0) return null; // Don't show the section if no chapters have prompts
+    if (filteredChapters.length === 0) return null;
+
+    // Get unique Diarios from filteredChapters
+    const uniqueDiarios = [...new Set(filteredChapters.map(cap => cap.diario_nombre))].sort();
+
+    // Get Tomos for selected Diario
+    const availableTomos = selectedDiario
+        ? [...new Set(filteredChapters.filter(cap => cap.diario_nombre === selectedDiario).map(cap => cap.tomo_nombre))].sort()
+        : [];
+
+    // Filtered chapters based on selection
+    const displayedChapters = filteredChapters.filter(cap =>
+        cap.diario_nombre === selectedDiario && cap.tomo_nombre === selectedTomo
+    );
+
+    const selectStyle = {
+        width: '100%',
+        padding: '10px',
+        backgroundColor: '#1a1a1a',
+        color: '#fff',
+        border: '1px solid #333',
+        borderRadius: '4px',
+        fontSize: '0.9rem',
+        outline: 'none'
+    };
 
     return (
-        <div style={{ padding: '20px 0' }}>
+        <div style={{ padding: '10px 0' }}>
             <h3 style={{
                 color: 'var(--accent-color, #ff4c4c)',
                 marginBottom: '20px',
-                fontSize: '1.4rem',
+                fontSize: isMobile ? '1.1rem' : '1.4rem',
                 borderBottom: '1px solid rgba(255, 76, 76, 0.3)',
-                paddingBottom: '10px'
+                paddingBottom: '10px',
+                textAlign: 'center'
             }}>
-                📂 Backups de Prompts por Capítulo
+                Backups de Prompts por Capitulo
             </h3>
 
-            <div style={{ overflowX: 'auto', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', color: '#eee', fontSize: '0.9rem' }}>
-                    <thead>
-                        <tr style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #333' }}>Diario</th>
-                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #333' }}>Tomo</th>
-                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #333' }}>Capítulo</th>
-                            <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #333' }}>Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredChapters.map(cap => (
-                            <tr key={cap.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                <td style={{ padding: '10px' }}>{cap.diario_nombre || 'N/A'} ({(cap.diario_orden || 1) - 1})</td>
-                                <td style={{ padding: '10px' }}>{cap.tomo_nombre || 'N/A'} ({cap.tomo_orden || 0})</td>
-                                <td style={{ padding: '10px', color: '#fff', fontWeight: '500' }}>{cap.nombre}</td>
-                                <td style={{ padding: '10px', textAlign: 'center' }}>
-                                    <button
-                                        onClick={() => viewPrompts(cap)}
-                                        style={{
-                                            padding: '6px 12px',
-                                            background: 'rgba(255, 76, 76, 0.1)',
-                                            border: '1px solid var(--accent-color, #ff4c4c)',
-                                            color: 'var(--accent-color, #ff4c4c)',
-                                            borderRadius: '4px',
-                                            cursor: 'pointer',
-                                            fontSize: '0.8rem'
-                                        }}
-                                    >
-                                        Ver Prompts
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            {/* Filters */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gap: '15px',
+                marginBottom: '30px'
+            }}>
+                <div>
+                    <label style={{ display: 'block', color: '#888', marginBottom: '8px', fontSize: '0.85rem' }}>Seleccionar Diario:</label>
+                    <select
+                        value={selectedDiario}
+                        onChange={(e) => {
+                            setSelectedDiario(e.target.value);
+                            setSelectedTomo("");
+                        }}
+                        style={selectStyle}
+                    >
+                        <option value="">-- Escoger Diario --</option>
+                        {uniqueDiarios.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label style={{ display: 'block', color: '#888', marginBottom: '8px', fontSize: '0.85rem' }}>Seleccionar Tomo:</label>
+                    <select
+                        value={selectedTomo}
+                        onChange={(e) => setSelectedTomo(e.target.value)}
+                        style={selectStyle}
+                        disabled={!selectedDiario}
+                    >
+                        <option value="">-- Escoger Tomo --</option>
+                        {availableTomos.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                </div>
             </div>
+
+            {selectedDiario && selectedTomo && displayedChapters.length > 0 ? (
+                <div style={{
+                    overflowX: 'auto',
+                    backgroundColor: 'rgba(0,0,0,0.2)',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    marginBottom: '20px',
+                    paddingBottom: '20px' // Extra space inside the container
+                }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', color: '#eee', fontSize: isMobile ? '0.8rem' : '0.9rem' }}>
+                        <thead>
+                            <tr style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #333' }}>Capítulo</th>
+                                <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #333' }}>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {displayedChapters.map(cap => (
+                                <tr key={cap.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                    <td style={{ padding: '10px', color: '#fff', fontWeight: '500' }}>{cap.nombre}</td>
+                                    <td style={{ padding: '10px', textAlign: 'center' }}>
+                                        <button
+                                            onClick={() => viewPrompts(cap)}
+                                            style={{
+                                                padding: isMobile ? '6px 10px' : '6px 12px',
+                                                background: 'rgba(255, 76, 76, 0.1)',
+                                                border: '1px solid var(--accent-color, #ff4c4c)',
+                                                color: 'var(--accent-color, #ff4c4c)',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                fontSize: '0.75rem'
+                                            }}
+                                        >
+                                            Ver Prompts
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            ) : selectedDiario && selectedTomo ? (
+                <div style={{ textAlign: 'center', color: '#666', padding: '20px' }}>No hay respaldos en este tomo.</div>
+            ) : (
+                <div style={{ textAlign: 'center', color: '#666', padding: '40px', border: '1px dashed #333', borderRadius: '8px' }}>
+                    Seleccione un Diario y un Tomo para ver los respaldos disponibles.
+                </div>
+            )}
 
             {/* Read-only Modal for Chapter Prompts */}
             {selectedChapterPrompts && (

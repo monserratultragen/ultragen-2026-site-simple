@@ -105,10 +105,23 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                 setIsUnlocked(true);
             }
         }
+    }, [chapter.id, isActuallyVip]);
 
-        // Prevent body scroll when modal is open
+    useEffect(() => {
+        // Prevent background scroll when modal is open
+        const originalHtmlOverflow = document.documentElement.style.overflow;
+        const originalBodyOverflow = document.body.style.overflow;
+
+        document.documentElement.style.overflow = 'hidden';
         document.body.style.overflow = 'hidden';
 
+        return () => {
+            document.documentElement.style.overflow = originalHtmlOverflow;
+            document.body.style.overflow = originalBodyOverflow;
+        };
+    }, []);
+
+    useEffect(() => {
         if (!chapter) return;
 
         // If locked, we don't load images yet
@@ -117,6 +130,8 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
             return;
         }
 
+        setLoading(true); // Ensure loading state is active when starting preload
+
         // Extract image URLs
         const content = chapter.contenido || '';
         const matches = content.match(/\[img:\s*(.*?)\]/g) || [];
@@ -124,7 +139,7 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
 
         if (imageUrls.length === 0) {
             setLoading(false);
-            return () => { document.body.style.overflow = 'unset'; };
+            return;
         }
 
         // Preload images
@@ -144,14 +159,9 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
             const img = new Image();
             img.src = url;
             img.onload = updateProgress;
-            img.onerror = updateProgress; // Proceed even if error
+            img.onerror = updateProgress;
         });
-
-        return () => {
-            document.body.style.overflow = 'unset';
-            // Cleanup logic if needed (e.g. cancel image loads - complex in pure JS)
-        };
-    }, [chapter]);
+    }, [chapter, isUnlocked]);
 
     if (!chapter) return null;
 
