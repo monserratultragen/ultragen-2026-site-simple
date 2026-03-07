@@ -9,7 +9,7 @@ import LoadingScreen from './components/LoadingScreen';
 import WelcomeModal from './components/WelcomeModal';
 import SupportButton from './components/SupportButton';
 import SupportModal from './components/SupportModal';
-import BackupsPage from './components/BackupsPage';
+const BackupsPage = React.lazy(() => import('./components/BackupsPage'));
 import './index.css';
 
 const MainLayout = ({ chapters, guestbookEntries, onOpenSupportModal, onNavigate }) => (
@@ -45,10 +45,18 @@ const AppContent = ({ chapters, guestbookEntries, user, onLogout, onOpenSupportM
         } />
 
         <Route path="/backups" element={
-          <BackupsPage
-            chapters={chapters}
-            onNavigate={(page) => page === 'home' ? navigate('/') : navigate('/backups')}
-          />
+          <React.Suspense fallback={<LoadingScreen progress={100} />}>
+            {sessionStorage.getItem('master_unlocked') === 'true' ? (
+              <BackupsPage
+                chapters={chapters}
+                onNavigate={(page) => page === 'home' ? navigate('/') : navigate('/backups')}
+              />
+            ) : (
+              <div style={{ display: 'none' }}>{/* Redirect handled by navigate inside useEffect/render logic if needed, but for now simple guard */}
+                {(() => { navigate('/'); return null; })()}
+              </div>
+            )}
+          </React.Suspense>
         } />
 
         {/* Deep link route for chapters */}

@@ -13,12 +13,11 @@ const Wall = ({ chapters, onOpenSupportModal, onNavigate }) => {
     const [selectedChapter, setSelectedChapter] = useState(null);
     const [activeTab, setActiveTab] = useState(null);
     const [activeTomoTab, setActiveTomoTab] = useState(null);
-    const [hasMasterKey, setHasMasterKey] = useState(
-        () => sessionStorage.getItem('master_unlocked') === 'true'
-    );
+
+    const [, setForceUpdate] = useState(0);
 
     const handleMasterUnlock = () => {
-        setHasMasterKey(true);
+        setForceUpdate(n => n + 1);
     };
 
     // Grouping Logic
@@ -161,7 +160,7 @@ const Wall = ({ chapters, onOpenSupportModal, onNavigate }) => {
                 )}
 
                 {/* AI / Master Content Switch */}
-                {hasMasterKey && (
+                {sessionStorage.getItem('master_unlocked') === 'true' && (
                     <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
                         <button
                             className="pill-nav-btn pill-ai-btn"
