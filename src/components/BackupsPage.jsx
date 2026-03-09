@@ -10,6 +10,12 @@ const BackupsPage = ({ chapters, onNavigate }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [toast, setToast] = useState(null);
+
+    const showToast = (message) => {
+        setToast(message);
+        setTimeout(() => setToast(null), 1500);
+    };
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -206,7 +212,7 @@ const BackupsPage = ({ chapters, onNavigate }) => {
                                             <button
                                                 onClick={() => {
                                                     navigator.clipboard.writeText(prompt.prompt).then(() => {
-                                                        alert('Prompt copiado al portapapeles');
+                                                        showToast("Prompt copiado con éxito");
                                                     });
                                                 }}
                                                 className="btn"
@@ -231,6 +237,36 @@ const BackupsPage = ({ chapters, onNavigate }) => {
                     )}
                 </div>
             )}
+
+            {/* Toast Notification */}
+            {toast && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '30px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    color: 'var(--accent-color, #ff4c4c)',
+                    padding: '12px 24px',
+                    borderRadius: '50px',
+                    zIndex: 9999,
+                    boxShadow: '0 5px 20px rgba(0,0,0,0.5)',
+                    border: '1px solid rgba(255, 76, 76, 0.3)',
+                    fontSize: '0.95rem',
+                    fontWeight: '600',
+                    pointerEvents: 'none',
+                    animation: 'toastFadeIn 0.3s ease-out'
+                }}>
+                    ✨ {toast}
+                </div>
+            )}
+
+            <style>{`
+                @keyframes toastFadeIn {
+                    from { opacity: 0; transform: translate(-50%, -20px); }
+                    to { opacity: 1; transform: translate(-50%, 0); }
+                }
+            `}</style>
         </div>
     );
 };

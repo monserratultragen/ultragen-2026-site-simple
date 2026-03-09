@@ -8,6 +8,12 @@ const AIGallery = ({ chapters }) => {
     const [images, setImages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [toast, setToast] = useState(null);
+
+    const showToast = (message) => {
+        setToast(message);
+        setTimeout(() => setToast(null), 1500);
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -85,7 +91,9 @@ const AIGallery = ({ chapters }) => {
                                 )}
                                 <button
                                     onClick={() => {
-                                        navigator.clipboard.writeText(prompt.prompt).catch(console.error);
+                                        navigator.clipboard.writeText(prompt.prompt)
+                                            .then(() => showToast("Prompt copiado con éxito"))
+                                            .catch(console.error);
                                     }}
                                     style={{
                                         marginTop: 'auto',
@@ -164,6 +172,36 @@ const AIGallery = ({ chapters }) => {
                     </div>
                 )}
             </div>
+
+            {/* Toast Notification */}
+            {toast && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '30px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    color: 'var(--accent-color, #ff4c4c)',
+                    padding: '12px 24px',
+                    borderRadius: '50px',
+                    zIndex: 2000,
+                    boxShadow: '0 5px 20px rgba(0,0,0,0.5)',
+                    border: '1px solid rgba(255, 76, 76, 0.3)',
+                    fontSize: '0.95rem',
+                    fontWeight: '600',
+                    pointerEvents: 'none',
+                    animation: 'toastFadeIn 0.3s ease-out'
+                }}>
+                    ✨ {toast}
+                </div>
+            )}
+
+            <style>{`
+                @keyframes toastFadeIn {
+                    from { opacity: 0; transform: translate(-50%, -20px); }
+                    to { opacity: 1; transform: translate(-50%, 0); }
+                }
+            `}</style>
         </div>
     );
 };

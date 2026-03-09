@@ -91,7 +91,7 @@ const AIBackupsTable = ({ chapters }) => {
             setViewLevel('prompts');
         } catch (err) {
             console.error("Error fetching prompts:", err);
-            alert("Error al cargar los prompts.");
+            showToast("Error al cargar los prompts");
         } finally {
             setLoading(false);
         }
@@ -108,7 +108,7 @@ const AIBackupsTable = ({ chapters }) => {
             await axios.patch(`${apiUrl}/api/capitulo-prompts/${movingPrompt.id}/`, {
                 capitulo: targetChapter.id
             });
-            alert("Prompt movido exitosamente.");
+            showToast("Prompt movido con éxito");
             setMovingPrompt(null);
             // Refresh current view if we are in prompts view
             if (viewLevel === 'prompts') {
@@ -118,7 +118,7 @@ const AIBackupsTable = ({ chapters }) => {
             }
         } catch (err) {
             console.error("Error moving prompt:", err);
-            alert("No se pudo mover el prompt.");
+            showToast("No se pudo mover el prompt");
         }
     };
 
@@ -178,22 +178,47 @@ const AIBackupsTable = ({ chapters }) => {
         </thead>
     );
 
-    const ActionButton = ({ onClick, label, variant = 'primary' }) => (
-        <button
+    const EyeIcon = () => (
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+    );
+
+    const MoveIcon = () => (
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            <line x1="12" y1="11" x2="12" y2="17"></line>
+            <polyline points="9 14 12 17 15 14"></polyline>
+        </svg>
+    );
+
+    const CopyIcon = () => (
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+    );
+
+    const IconButton = ({ onClick, icon: Icon, title, color = 'var(--accent-color, #ff4c4c)' }) => (
+        <span
             onClick={(e) => { e.stopPropagation(); onClick(); }}
+            title={title}
+            className="action-icon-btn"
             style={{
-                padding: '6px 12px',
-                background: variant === 'primary' ? 'rgba(255, 76, 76, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                border: variant === 'primary' ? '1px solid var(--accent-color, #ff4c4c)' : '1px solid #555',
-                color: variant === 'primary' ? 'var(--accent-color, #ff4c4c)' : '#ccc',
-                borderRadius: '4px',
+                color: color,
                 cursor: 'pointer',
-                fontSize: '0.75rem',
-                margin: '0 4px'
+                padding: '6px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+                borderRadius: '50%',
+                margin: '0 2px'
             }}
         >
-            {label}
-        </button>
+            <Icon />
+        </span>
     );
 
     const TreeSelector = ({ onSelect, onCancel }) => {
@@ -344,14 +369,11 @@ const AIBackupsTable = ({ chapters }) => {
 
                     {viewLevel === 'chapters' && (
                         <>
-                            <TableHeader columns={['Capítulo', 'Acción']} />
+                            <TableHeader columns={['Capítulo']} />
                             <tbody>
                                 {chaptersInTomo.map(cap => (
                                     <tr key={cap.id} onClick={() => selectChapter(cap)} style={{ cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                                         <td style={{ padding: '12px' }}>{cap.nombre}</td>
-                                        <td style={{ padding: '12px', textAlign: 'center' }}>
-                                            <ActionButton label="Ver Prompts" onClick={() => selectChapter(cap)} />
-                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -370,9 +392,10 @@ const AIBackupsTable = ({ chapters }) => {
                                     prompts.map(p => (
                                         <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                                             <td style={{ padding: '12px' }}>{p.titulo}</td>
-                                            <td style={{ padding: '12px', textAlign: 'center' }}>
-                                                <ActionButton label="Ver" onClick={() => { setSelectedSinglePrompt(p); }} />
-                                                <ActionButton label="Mover" onClick={() => handleMovePrompt(p)} variant="secondary" />
+                                            <td style={{ padding: '8px 4px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                                <IconButton icon={CopyIcon} onClick={() => { navigator.clipboard.writeText(p.prompt); showToast("Prompt copiado"); }} title="Copiar" color="#00ffcc" />
+                                                <IconButton icon={EyeIcon} onClick={() => { setSelectedSinglePrompt(p); }} title="Ver" />
+                                                <IconButton icon={MoveIcon} onClick={() => handleMovePrompt(p)} color="#888" title="Mover" />
                                             </td>
                                         </tr>
                                     ))
@@ -441,7 +464,7 @@ const AIBackupsTable = ({ chapters }) => {
                                                 <button
                                                     onClick={() => {
                                                         navigator.clipboard.writeText(p.prompt);
-                                                        showToast("Prompt copiado al portapapeles");
+                                                        showToast("Prompt copiado con éxito");
                                                     }}
                                                     style={{
                                                         fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)',
@@ -500,6 +523,14 @@ const AIBackupsTable = ({ chapters }) => {
                 @keyframes toastFadeIn {
                     from { opacity: 0; transform: translate(-50%, -20px); }
                     to { opacity: 1; transform: translate(-50%, 0); }
+                }
+                .action-icon-btn:hover {
+                    background-color: rgba(255, 255, 255, 0.08);
+                    transform: scale(1.15);
+                    filter: drop-shadow(0 0 5px currentColor);
+                }
+                .action-icon-btn:active {
+                    transform: scale(0.95);
                 }
             `}</style>
         </div>

@@ -4,6 +4,13 @@ import sinPortadaImg from '../assets/sin_portada.png';
 
 
 const ChapterCard = ({ chapter, onClick }) => {
+    const [toast, setToast] = React.useState(null);
+
+    const showToast = (message) => {
+        setToast(message);
+        setTimeout(() => setToast(null), 1500);
+    };
+
     const isBlocked = chapter.es_demo === false;
     const isVip = !!chapter.is_vip;
 
@@ -15,7 +22,7 @@ const ChapterCard = ({ chapter, onClick }) => {
     const handleClick = () => {
         const isMaster = sessionStorage.getItem('master_unlocked') === 'true';
         if (isBlocked && !isMaster) {
-            alert('Este capítulo no está disponible en la versión demo.');
+            showToast('No disponible en demo');
             return;
         }
         onClick(chapter);
@@ -200,6 +207,38 @@ const ChapterCard = ({ chapter, onClick }) => {
                     Capítulo: {chapter.orden}
                 </p>
             </div>
+
+            {/* Toast Notification */}
+            {toast && (
+                <div style={{
+                    position: 'absolute',
+                    bottom: '20px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    color: 'var(--accent-color, #ff4c4c)',
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    zIndex: 10,
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+                    border: '1px solid rgba(255, 76, 76, 0.3)',
+                    fontSize: '0.7rem',
+                    fontWeight: 'bold',
+                    pointerEvents: 'none',
+                    textAlign: 'center',
+                    width: '80%',
+                    animation: 'toastFadeIn 0.3s ease-out'
+                }}>
+                    ✨ {toast}
+                </div>
+            )}
+
+            <style>{`
+                @keyframes toastFadeIn {
+                    from { opacity: 0; transform: translate(-50%, -10px); }
+                    to { opacity: 1; transform: translate(-50%, 0); }
+                }
+            `}</style>
         </div>
     );
 };
