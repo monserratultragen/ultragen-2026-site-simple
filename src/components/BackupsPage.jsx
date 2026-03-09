@@ -10,6 +10,7 @@ const BackupsPage = ({ chapters, onNavigate }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [selectedCategory, setSelectedCategory] = useState('all');
     const [toast, setToast] = useState(null);
 
     const showToast = (message) => {
@@ -181,47 +182,102 @@ const BackupsPage = ({ chapters, onNavigate }) => {
                     {activeTab === 'featured_prompts' && (
                         <div>
                             <h3 style={{ color: '#aaa', marginBottom: '20px', textAlign: 'center' }}>Lista de Prompts AI</h3>
-                            {prompts.length === 0 ? (
-                                <p style={{ color: '#666', fontStyle: 'italic', textAlign: 'center' }}>No hay prompts registrados aún.</p>
+
+                            {/* Categories Sub-Nav */}
+                            <div style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '10px',
+                                justifyContent: 'center',
+                                marginBottom: '30px',
+                                padding: '0 10px'
+                            }}>
+                                {[
+                                    { id: 'all', label: 'Todos' },
+                                    { id: 'perfil-sl', label: 'Perfil' },
+                                    { id: 'personajes', label: 'Personajes' },
+                                    { id: 'bienvenidas', label: 'Bienvenidas' },
+                                    { id: 'book-fotos', label: 'Book' },
+                                    { id: 'utilidades', label: 'Utilidades' },
+                                    { id: 'modelo-prompt', label: 'Modelo' },
+                                    { id: 'variados', label: 'Variados' }
+                                ].map(cat => (
+                                    <button
+                                        key={cat.id}
+                                        onClick={() => setSelectedCategory(cat.id)}
+                                        style={{
+                                            padding: '6px 12px',
+                                            borderRadius: '20px',
+                                            border: '1px solid',
+                                            borderColor: selectedCategory === cat.id ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)',
+                                            backgroundColor: selectedCategory === cat.id ? 'rgba(255, 76, 76, 0.1)' : 'transparent',
+                                            color: selectedCategory === cat.id ? 'var(--accent-color)' : '#888',
+                                            fontSize: '0.75rem',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            fontWeight: selectedCategory === cat.id ? 'bold' : 'normal'
+                                        }}
+                                    >
+                                        {cat.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {prompts.filter(p => selectedCategory === 'all' || p.categoria === selectedCategory).length === 0 ? (
+                                <p style={{ color: '#666', fontStyle: 'italic', textAlign: 'center' }}>No hay prompts en esta categoría.</p>
                             ) : (
                                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-                                    {prompts.map(prompt => (
-                                        <div key={prompt.id} style={{
-                                            backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                                            borderRadius: '8px',
-                                            padding: isMobile ? '15px' : '20px',
-                                            display: 'flex',
-                                            flexDirection: 'column'
-                                        }}>
-                                            <h4 style={{ color: 'var(--accent-color)', fontSize: isMobile ? '1rem' : '1.2rem', margin: '0 0 15px 0' }}>{prompt.titulo}</h4>
-                                            <div style={{
-                                                backgroundColor: '#000',
-                                                padding: '15px',
-                                                borderRadius: '4px',
-                                                color: '#ccc',
-                                                fontFamily: 'monospace',
-                                                fontSize: isMobile ? '0.8rem' : '0.9rem',
-                                                marginBottom: '15px',
-                                                overflowY: 'auto',
-                                                maxHeight: '200px',
-                                                border: '1px solid #333'
+                                    {prompts
+                                        .filter(p => selectedCategory === 'all' || p.categoria === selectedCategory)
+                                        .map(prompt => (
+                                            <div key={prompt.id} style={{
+                                                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                borderRadius: '8px',
+                                                padding: isMobile ? '15px' : '20px',
+                                                display: 'flex',
+                                                flexDirection: 'column'
                                             }}>
-                                                {prompt.prompt}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                                                    <h4 style={{ color: 'var(--accent-color)', fontSize: isMobile ? '1rem' : '1.2rem', margin: 0 }}>{prompt.titulo}</h4>
+                                                    <span style={{
+                                                        fontSize: '0.65rem',
+                                                        backgroundColor: 'rgba(255,255,255,0.05)',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '4px',
+                                                        color: '#666',
+                                                        textTransform: 'uppercase'
+                                                    }}>
+                                                        {prompt.categoria || 'variados'}
+                                                    </span>
+                                                </div>
+                                                <div style={{
+                                                    backgroundColor: '#000',
+                                                    padding: '15px',
+                                                    borderRadius: '4px',
+                                                    color: '#ccc',
+                                                    fontFamily: 'monospace',
+                                                    fontSize: isMobile ? '0.8rem' : '0.9rem',
+                                                    marginBottom: '15px',
+                                                    overflowY: 'auto',
+                                                    maxHeight: '200px',
+                                                    border: '1px solid #333'
+                                                }}>
+                                                    {prompt.prompt}
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(prompt.prompt).then(() => {
+                                                            showToast("Prompt copiado con éxito");
+                                                        });
+                                                    }}
+                                                    className="btn"
+                                                    style={{ width: '100%', marginTop: 'auto', fontSize: '0.8rem' }}
+                                                >
+                                                    Copiar Prompt
+                                                </button>
                                             </div>
-                                            <button
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(prompt.prompt).then(() => {
-                                                        showToast("Prompt copiado con éxito");
-                                                    });
-                                                }}
-                                                className="btn"
-                                                style={{ width: '100%', marginTop: 'auto', fontSize: '0.8rem' }}
-                                            >
-                                                Copiar Prompt
-                                            </button>
-                                        </div>
-                                    ))}
+                                        ))}
                                 </div>
                             )}
                         </div>
