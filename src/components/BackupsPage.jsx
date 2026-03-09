@@ -11,7 +11,10 @@ const BackupsPage = ({ chapters, onNavigate }) => {
     const [error, setError] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [selectedCategory, setSelectedCategory] = useState('all');
+    const [visitorStats, setVisitorStats] = useState([]);
     const [toast, setToast] = useState(null);
+
+    const isMaster = localStorage.getItem('isMaster') === 'true' || !!chapters?.some(c => c.is_vip); // Heuristic for master key
 
     const showToast = (message) => {
         setToast(message);
@@ -25,12 +28,27 @@ const BackupsPage = ({ chapters, onNavigate }) => {
         const fetchData = async () => {
             try {
                 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-                const [promptsRes, imagesRes] = await Promise.all([
+
+                // 1. Log Visit (Silent)
+                axios.post(`${apiUrl}/api/visitas/log_visit/`, { ruta: '/backups' })
+                    .catch(e => console.error("Tracking silent error", e));
+
+                const requests = [
                     axios.get(`${apiUrl}/api/prompts-ai/`),
                     axios.get(`${apiUrl}/api/imagenes-ai-base/`)
-                ]);
-                setPrompts(promptsRes.data);
-                setImages(imagesRes.data);
+                ];
+
+                // 2. Fetch Stats if authorized
+                if (isMaster) {
+                    requests.push(axios.get(`${apiUrl}/api/visitas/stats/`));
+                }
+
+                const responses = await Promise.all(requests);
+                setPrompts(responses[0].data);
+                setImages(responses[1].data);
+                if (isMaster && responses[2]) {
+                    setVisitorStats(responses[2].data);
+                }
             } catch (err) {
                 console.error("Error fetching AI data:", err);
                 setError("No se pudieron cargar los datos de AI.");
@@ -64,6 +82,15 @@ const BackupsPage = ({ chapters, onNavigate }) => {
         textAlign: 'center',
         whiteSpace: 'nowrap'
     });
+
+    const getFlagEmoji = (countryCode) => {
+        if (!countryCode || countryCode === '??' || countryCode === 'LH') return '🌐';
+        const codePoints = countryCode
+            .toUpperCase()
+            .split('')
+            .map(char => 127397 + char.charCodeAt());
+        return String.fromCodePoint(...codePoints);
+    };
 
     if (loading) return (
         <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#aaa' }}>
@@ -124,6 +151,14 @@ const BackupsPage = ({ chapters, onNavigate }) => {
                 >
                     prompt lista
                 </button>
+                {isMaster && (
+                    <button
+                        onClick={() => setActiveTab('visitor_stats')}
+                        style={tabStyle(activeTab === 'visitor_stats')}
+                    >
+                        visitas
+                    </button>
+                )}
             </div>
 
             {/* Error State */}
@@ -132,6 +167,45 @@ const BackupsPage = ({ chapters, onNavigate }) => {
             {/* Tab Content */}
             {!error && (
                 <div>
+                    {activeTab === 'visitor_stats' && isMaster && (
+                        <div className="card" style={{ padding: isMobile ? '15px' : '30px', textAlign: 'center' }}>
+                            <h3 style={{ color: '#aaa', marginBottom: '25px' }}>Geolocalización de Visitas</h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxWidth: '500px', margin: '0 auto' }}>
+                                {visitorStats.length === 0 ? (
+                                    <p style={{ color: '#666' }}>No hay datos de visitas aún.</p>
+                                ) : (
+                                    visitorStats.map((stat, idx) => (
+                                        <div key={idx} style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '12px 20px',
+                                            backgroundColor: 'rgba(255,255,255,0.03)',
+                                            borderRadius: '8px',
+                                            border: '1px solid rgba(255,255,255,0.05)'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <span style={{ fontSize: '1.2rem' }}>
+                                                    {getFlagEmoji(stat.pais_codigo)}
+                                                </span>
+                                                <span style={{ color: '#eee', fontWeight: '500' }}>{stat.pais}</span>
+                                            </div>
+                                            <span style={{
+                                                backgroundColor: 'var(--accent-color)',
+                                                color: 'white',
+                                                padding: '2px 10px',
+                                                borderRadius: '12px',
+                                                fontSize: '0.8rem',
+                                                fontWeight: 'bold'
+                                            }}>
+                                                {stat.total}
+                                            </span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
                     {activeTab === 'base_images' && (
                         <div>
                             <h3 style={{ color: '#aaa', marginBottom: '20px', textAlign: 'center', fontSize: isMobile ? '1rem' : '1.1rem' }}>Galeria de imagenes</h3>
