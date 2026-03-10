@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Wall from './components/Wall';
 import Landing from './components/Landing';
@@ -52,9 +52,7 @@ const AppContent = ({ chapters, guestbookEntries, user, onLogout, onOpenSupportM
                 onNavigate={(page) => page === 'home' ? navigate('/') : navigate('/backups')}
               />
             ) : (
-              <div style={{ display: 'none' }}>{/* Redirect handled by navigate inside useEffect/render logic if needed, but for now simple guard */}
-                {(() => { navigate('/'); return null; })()}
-              </div>
+              <Navigate to="/" replace />
             )}
           </React.Suspense>
         } />
