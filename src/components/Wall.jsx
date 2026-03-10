@@ -26,42 +26,44 @@ const Wall = ({ chapters, onOpenSupportModal, onNavigate }) => {
         return chapters.reduce((acc, chapter) => {
             if (chapter.is_active === false) return acc;
 
-            const diario = chapter.diario_nombre || 'Sin Diario';
-            const tomo = chapter.tomo_nombre || 'Sin Tomo';
+            const diarioKey = `diario_${chapter.diario_orden}`;
+            const tomoKey = `tomo_${chapter.tomo_orden}`;
 
-            if (!acc[diario]) {
-                acc[diario] = {
+            if (!acc[diarioKey]) {
+                acc[diarioKey] = {
+                    nombre: chapter.diario_nombre || 'Sin Diario',
                     count: 0,
                     diario_orden: chapter.diario_orden || 0,
                     tomos: {}
                 };
             }
 
-            acc[diario].count++;
+            acc[diarioKey].count++;
 
-            if (!acc[diario].tomos[tomo]) {
-                acc[diario].tomos[tomo] = {
+            if (!acc[diarioKey].tomos[tomoKey]) {
+                acc[diarioKey].tomos[tomoKey] = {
+                    nombre: chapter.tomo_nombre || 'Sin Tomo',
                     chapters: [],
                     tomo_orden: chapter.tomo_orden || 0,
                     tomo_id: chapter.tomo_id || 0
                 };
             }
-            acc[diario].tomos[tomo].chapters.push(chapter);
+            acc[diarioKey].tomos[tomoKey].chapters.push(chapter);
             return acc;
         }, {});
     }, [chapters]);
 
-    // Get sorted diary names based on diario_orden
-    const diaryNames = Object.keys(groupedData).sort((a, b) => {
+    // Get sorted diary keys based on diario_orden
+    const diaryKeys = Object.keys(groupedData).sort((a, b) => {
         return groupedData[a].diario_orden - groupedData[b].diario_orden;
     });
 
     // Set active tab if not set and we have data
     useEffect(() => {
-        if (!activeTab && diaryNames.length > 0) {
-            setActiveTab(diaryNames[0]);
+        if (!activeTab && diaryKeys.length > 0) {
+            setActiveTab(diaryKeys[0]);
         }
-    }, [diaryNames, activeTab]);
+    }, [diaryKeys, activeTab]);
 
     const activeDiaryData = activeTab ? groupedData[activeTab] : null;
 
@@ -86,8 +88,8 @@ const Wall = ({ chapters, onOpenSupportModal, onNavigate }) => {
         if (chapters.length > 0 && diarioId && tomoId && chapterId) {
             const chapter = chapters.find(c => String(c.id) === String(chapterId));
             if (chapter) {
-                setActiveTab(chapter.diario_nombre);
-                setActiveTomoTab(chapter.tomo_nombre);
+                setActiveTab(`diario_${chapter.diario_orden}`);
+                setActiveTomoTab(`tomo_${chapter.tomo_orden}`);
                 setSelectedChapter(chapter);
             }
         }
@@ -127,14 +129,14 @@ const Wall = ({ chapters, onOpenSupportModal, onNavigate }) => {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: (sortedTomoEntries.length > 0) ? '15px' : '0' }}>
                     <span style={{ color: '#fff', fontSize: '1rem', fontWeight: 'bold', flexShrink: 0 }}>Diarios:</span>
                     <div className="nav-group" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                        {diaryNames.map(diaryName => (
+                        {diaryKeys.map(diaryKey => (
                             <button
-                                key={diaryName}
-                                className={`circle-nav-btn ${activeTab === diaryName ? 'active' : ''}`}
-                                onClick={() => setActiveTab(diaryName)}
-                                title={`${diaryName} (${groupedData[diaryName].count} capítulos)`}
+                                key={diaryKey}
+                                className={`circle-nav-btn ${activeTab === diaryKey ? 'active' : ''}`}
+                                onClick={() => setActiveTab(diaryKey)}
+                                title={`${groupedData[diaryKey].nombre} (${groupedData[diaryKey].count} capítulos)`}
                             >
-                                {groupedData[diaryName].diario_orden - 1}
+                                {groupedData[diaryKey].diario_orden - 1}
                             </button>
                         ))}
                     </div>
@@ -145,12 +147,12 @@ const Wall = ({ chapters, onOpenSupportModal, onNavigate }) => {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '15px' }}>
                         <span style={{ color: '#fff', fontSize: '1rem', fontWeight: 'bold', flexShrink: 0 }}>Tomos:</span>
                         <div className="nav-group" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                            {sortedTomoEntries.map(([tomoName, tomoData]) => (
+                            {sortedTomoEntries.map(([tomoKey, tomoData]) => (
                                 <button
-                                    key={tomoName}
-                                    className={`circle-nav-btn ${activeTomoTab === tomoName ? 'active' : ''}`}
-                                    onClick={() => setActiveTomoTab(tomoName)}
-                                    title={`${tomoName} (${tomoData.chapters.length} capítulos)`}
+                                    key={tomoKey}
+                                    className={`circle-nav-btn ${activeTomoTab === tomoKey ? 'active' : ''}`}
+                                    onClick={() => setActiveTomoTab(tomoKey)}
+                                    title={`${tomoData.nombre} (${tomoData.chapters.length} capítulos)`}
                                 >
                                     {tomoData.tomo_orden}
                                 </button>
@@ -186,7 +188,7 @@ const Wall = ({ chapters, onOpenSupportModal, onNavigate }) => {
                                 fontSize: '1.2rem',
                                 textAlign: 'center'
                             }}>
-                                {activeTomoTab} ({activeTomoData.chapters.length} capítulos)
+                                {activeTomoData.nombre} ({activeTomoData.chapters.length} capítulos)
                             </h3>
                             <div className="grid">
                                 {activeTomoData.chapters.map(chapter => (
