@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import monseAvatar from '../monse.png';
 
-const LoadingScreen = ({ progress = 0 }) => {
+const LoadingScreen = ({ progress = 0, fadingOut = false }) => {
     const [showPatienceMessage, setShowPatienceMessage] = useState(false);
 
     useEffect(() => {
@@ -20,13 +20,16 @@ const LoadingScreen = ({ progress = 0 }) => {
             width: '100%',
             height: '100%',
             backgroundColor: 'black',
-            zIndex: 9998, // Below modal (9999)
+            zIndex: 9998,
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
             color: 'white',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            opacity: fadingOut ? 0 : 1,
+            transition: 'opacity 0.8s ease-out',
+            pointerEvents: fadingOut ? 'none' : 'all'
         }}>
             <div className="spinner" style={{
                 border: '4px solid rgba(255, 255, 255, 0.3)',

@@ -79,6 +79,7 @@ function App() {
     return savedUser ? JSON.parse(savedUser) : null;
   });
   const [dataLoading, setDataLoading] = useState(true);
+  const [showLoadingScreen, setShowLoadingScreen] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
   const [targetProgress, setTargetProgress] = useState(0);
   const [chapters, setChapters] = useState([]);
@@ -112,13 +113,21 @@ function App() {
     return () => clearInterval(interval);
   }, [dataLoading]);
 
-  // Completion Effect
+  // Completion Effect: data is ready, trigger LoadingScreen fade-out, then hide it
   useEffect(() => {
     if (loadProgress >= 100) {
-      const timeout = setTimeout(() => {
+      // Small delay so the bar visually fills to 100% first
+      const dataTimeout = setTimeout(() => {
         setDataLoading(false);
-      }, 500);
-      return () => clearTimeout(timeout);
+      }, 200);
+      // Hide loading screen after fade-out animation (800ms fade + 200ms buffer)
+      const screenTimeout = setTimeout(() => {
+        setShowLoadingScreen(false);
+      }, 1200);
+      return () => {
+        clearTimeout(dataTimeout);
+        clearTimeout(screenTimeout);
+      };
     }
   }, [loadProgress]);
 
@@ -179,6 +188,7 @@ function App() {
   return (
     <HashRouter>
       <div className="App">
+        {/* AppContent renders as soon as data is ready, behind the loading screen */}
         {!dataLoading && (
           <AppContent
             chapters={chapters}
@@ -192,7 +202,10 @@ function App() {
           />
         )}
 
-        {dataLoading && <LoadingScreen progress={loadProgress} />}
+        {/* Loading screen fades out gracefully after data is ready */}
+        {showLoadingScreen && (
+          <LoadingScreen progress={loadProgress} fadingOut={!dataLoading} />
+        )}
 
         {showWelcomeModal && (
           <WelcomeModal
