@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import monseAvatar from '../monse.png';
 
-const LoadingScreen = ({ progress = 0, fadingOut = false }) => {
+const LoadingScreen = ({ progress = 0, fadingOut = false, status = "" }) => {
     const [showPatienceMessage, setShowPatienceMessage] = useState(false);
 
     useEffect(() => {
@@ -58,9 +58,23 @@ const LoadingScreen = ({ progress = 0, fadingOut = false }) => {
                     transition: 'width 0.3s ease-out'
                 }}></div>
             </div>
-            <p style={{ fontFamily: 'monospace', fontSize: '0.8rem', marginTop: '5px', opacity: 0.7 }}>
-                {Math.round(progress)}%
-            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '10px', height: '40px' }}>
+                <p style={{ fontFamily: 'monospace', fontSize: '0.8rem', opacity: 0.7, margin: 0 }}>
+                    {Math.round(progress)}%
+                </p>
+                {status && (
+                    <p style={{ 
+                        fontFamily: 'monospace', 
+                        fontSize: '0.7rem', 
+                        marginTop: '5px', 
+                        opacity: 0.5,
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px'
+                    }}>
+                        {status}
+                    </p>
+                )}
+            </div>
 
             {/* Patience Message Card - Repositioned and stylized */}
             {showPatienceMessage && (

@@ -86,6 +86,7 @@ function App() {
   const [guestbookEntries, setGuestbookEntries] = useState([]);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState("Iniciando...");
 
   // Smooth Progress Effect
   useEffect(() => {
@@ -106,8 +107,10 @@ function App() {
     if (!dataLoading) return;
     const interval = setInterval(() => {
       setTargetProgress(prev => {
-        if (prev >= 85) return prev;
-        return prev + Math.random() * 3;
+        if (prev >= 98) return prev;
+        // Slower progress after 85
+        const increment = prev >= 85 ? (Math.random() * 0.5) : (Math.random() * 3);
+        return prev + increment;
       });
     }, 800);
     return () => clearInterval(interval);
@@ -134,9 +137,10 @@ function App() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setTargetProgress(10);
+        setLoadingStatus("Conectando con el servidor...");
         const chaptersPromise = axios.get(`${import.meta.env.VITE_API_URL}/api/capitulos/`)
           .then(res => {
+            setLoadingStatus("Procesando capítulos...");
             const sorted = res.data.sort((a, b) =>
               (a.diario_orden - b.diario_orden) ||
               (a.tomo_orden - b.tomo_orden) ||
@@ -145,20 +149,22 @@ function App() {
               (a.id - b.id)
             );
             setChapters(sorted);
-            setTargetProgress(prev => Math.min(prev + 10, 90));
+            setTargetProgress(prev => Math.min(prev + 10, 95));
           });
 
         const guestbookPromise = axios.get(`${import.meta.env.VITE_API_URL}/api/libro-visitas/`)
           .then(res => {
+            setLoadingStatus("Cargando libro de visitas...");
             const sorted = res.data.sort((a, b) => b.id - a.id);
             setGuestbookEntries(sorted);
-            setTargetProgress(prev => Math.min(prev + 5, 90));
+            setTargetProgress(prev => Math.min(prev + 5, 95));
           });
 
         await Promise.all([chaptersPromise, guestbookPromise]);
       } catch (error) {
         console.error("Error loading data:", error);
       } finally {
+        setLoadingStatus("¡Listo!");
         setTargetProgress(100);
       }
     };
@@ -204,7 +210,11 @@ function App() {
 
         {/* Loading screen fades out gracefully after data is ready */}
         {showLoadingScreen && (
-          <LoadingScreen progress={loadProgress} fadingOut={!dataLoading} />
+          <LoadingScreen 
+            progress={loadProgress} 
+            fadingOut={!dataLoading} 
+            status={loadingStatus}
+          />
         )}
 
         {showWelcomeModal && (
