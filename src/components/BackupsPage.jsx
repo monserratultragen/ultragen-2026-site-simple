@@ -11,6 +11,7 @@ const BackupsPage = ({ chapters, onNavigate }) => {
     const [error, setError] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [selectedCategory, setSelectedCategory] = useState('all');
+    const [categories, setCategories] = useState([]);
     const [visitorStats, setVisitorStats] = useState([]);
     const [toast, setToast] = useState(null);
 
@@ -35,7 +36,8 @@ const BackupsPage = ({ chapters, onNavigate }) => {
 
                 const requests = [
                     axios.get(`${apiUrl}/api/prompts-ai/`),
-                    axios.get(`${apiUrl}/api/imagenes-ai-base/`)
+                    axios.get(`${apiUrl}/api/imagenes-ai-base/`),
+                    axios.get(`${apiUrl}/api/prompt-categorias/`)
                 ];
 
                 // 2. Fetch Stats if authorized
@@ -46,8 +48,9 @@ const BackupsPage = ({ chapters, onNavigate }) => {
                 const responses = await Promise.all(requests);
                 setPrompts(responses[0].data);
                 setImages(responses[1].data);
-                if (isMaster && responses[2]) {
-                    setVisitorStats(responses[2].data);
+                setCategories(responses[2].data);
+                if (isMaster && responses[3]) {
+                    setVisitorStats(responses[3].data);
                 }
             } catch (err) {
                 console.error("Error fetching AI data:", err);
@@ -266,16 +269,24 @@ const BackupsPage = ({ chapters, onNavigate }) => {
                                 marginBottom: '30px',
                                 padding: '0 10px'
                             }}>
-                                {[
-                                    { id: 'all', label: 'Todos' },
-                                    { id: 'perfil-sl', label: 'Perfil' },
-                                    { id: 'personajes', label: 'Personajes' },
-                                    { id: 'bienvenidas', label: 'Bienvenidas' },
-                                    { id: 'book-fotos', label: 'Book' },
-                                    { id: 'utilidades', label: 'Utilidades' },
-                                    { id: 'modelo-prompt', label: 'Modelo' },
-                                    { id: 'variados', label: 'Variados' }
-                                ].map(cat => (
+                                <button
+                                    onClick={() => setSelectedCategory('all')}
+                                    style={{
+                                        padding: '6px 12px',
+                                        borderRadius: '20px',
+                                        border: '1px solid',
+                                        borderColor: selectedCategory === 'all' ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)',
+                                        backgroundColor: selectedCategory === 'all' ? 'rgba(255, 76, 76, 0.1)' : 'transparent',
+                                        color: selectedCategory === 'all' ? 'var(--accent-color)' : '#888',
+                                        fontSize: '0.75rem',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        fontWeight: selectedCategory === 'all' ? 'bold' : 'normal'
+                                    }}
+                                >
+                                    Todos
+                                </button>
+                                {categories.map(cat => (
                                     <button
                                         key={cat.id}
                                         onClick={() => setSelectedCategory(cat.id)}
@@ -292,7 +303,7 @@ const BackupsPage = ({ chapters, onNavigate }) => {
                                             fontWeight: selectedCategory === cat.id ? 'bold' : 'normal'
                                         }}
                                     >
-                                        {cat.label}
+                                        {cat.nombre}
                                     </button>
                                 ))}
                             </div>
@@ -322,7 +333,7 @@ const BackupsPage = ({ chapters, onNavigate }) => {
                                                         color: '#666',
                                                         textTransform: 'uppercase'
                                                     }}>
-                                                        {prompt.categoria || 'variados'}
+                                                        {prompt.categoria_nombre || 'sin categoría'}
                                                     </span>
                                                 </div>
                                                 <div style={{
