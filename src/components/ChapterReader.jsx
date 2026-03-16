@@ -35,6 +35,8 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
     const [copied, setCopied] = useState(false);
+    const [showVoiceModal, setShowVoiceModal] = useState(false);
+    const [isReading, setIsReading] = useState(false);
 
     // Access Control State
     const [accessCode, setAccessCode] = useState('');
@@ -60,6 +62,39 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         });
+    };
+
+    const startReading = () => {
+        if (!chapter || !chapter.contenido) return;
+        
+        // Stop any current reading
+        window.speechSynthesis.cancel();
+        
+        const cleanText = chapter.contenido
+            .replace(/\[img:\s*.*?\]/g, '')
+            .replace(/\n\s*\n/g, '\n\n')
+            .trim();
+            
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = 'es-ES'; // Set to Spanish
+        utterance.rate = 1.0;
+        
+        utterance.onend = () => {
+            setIsReading(false);
+        };
+        
+        utterance.onerror = () => {
+            setIsReading(false);
+        };
+        
+        setIsReading(true);
+        setShowVoiceModal(false);
+        window.speechSynthesis.speak(utterance);
+    };
+
+    const stopReading = () => {
+        window.speechSynthesis.cancel();
+        setIsReading(false);
     };
 
     const handleValidate = async (e) => {
@@ -118,6 +153,7 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
         return () => {
             document.documentElement.style.overflow = originalHtmlOverflow;
             document.body.style.overflow = originalBodyOverflow;
+            window.speechSynthesis.cancel(); // Stop reading when closing the reader
         };
     }, []);
 
@@ -262,6 +298,39 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                 <div className="reader-header">
                     <h2>{chapter.nombre}</h2>
                     <p>{chapter.tomo_nombre} - {chapter.diario_nombre} {chapter.is_vip && <span style={{ color: 'gold' }}>[VIP]</span>}</p>
+                    <div style={{ marginTop: '10px' }}>
+                        {isReading ? (
+                            <button 
+                                className="btn" 
+                                onClick={stopReading}
+                                style={{ 
+                                    borderColor: '#ff4d4d', 
+                                    color: '#ff4d4d',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    margin: '0 auto'
+                                }}
+                            >
+                                <span>⏹</span> Detener Lectura
+                            </button>
+                        ) : (
+                            <button 
+                                className="btn" 
+                                onClick={() => setShowVoiceModal(true)}
+                                style={{ 
+                                    borderColor: 'gold', 
+                                    color: 'gold',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    margin: '0 auto'
+                                }}
+                            >
+                                <span>🔊</span> Lectura por voz
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {loading ? (
@@ -330,6 +399,43 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                     </div>
                 )}
             </div>
+
+            {showVoiceModal && (
+                <div className="reader-overlay access-overlay" style={{ zIndex: 3000 }}>
+                    <div className="reader-content access-prompt" style={{
+                        maxWidth: '400px',
+                        margin: 'auto',
+                        textAlign: 'center',
+                        padding: '30px 20px',
+                        backgroundColor: '#1a1a1a',
+                        border: '1px solid gold',
+                        boxShadow: '0 0 20px rgba(255, 215, 0, 0.3)',
+                        height: 'auto'
+                    }}>
+                        <div style={{ fontSize: '2.5rem', marginBottom: '15px' }}>🔊</div>
+                        <h3 style={{ color: 'gold', marginBottom: '10px' }}>Lectura por Voz</h3>
+                        <p style={{ color: '#ccc', marginBottom: '25px', fontSize: '0.9rem' }}>
+                            ¿Deseas iniciar la reproducción por voz de este capítulo?
+                        </p>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button 
+                                className="btn" 
+                                onClick={() => setShowVoiceModal(false)}
+                                style={{ flex: 1, borderColor: '#555', color: '#888' }}
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                className="btn" 
+                                onClick={startReading}
+                                style={{ flex: 1, background: 'gold', color: 'black', border: 'none' }}
+                            >
+                                Reproducir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
