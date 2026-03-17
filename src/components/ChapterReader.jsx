@@ -39,6 +39,7 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
     const [isReading, setIsReading] = useState(false);
     const [voiceSections, setVoiceSections] = useState([]);
     const [currentSectionIndex, setCurrentSectionIndex] = useState(-1);
+    const [selectedVoiceGender, setSelectedVoiceGender] = useState('F');
     
     const readingTokenRef = useRef(0);
 
@@ -133,7 +134,7 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
         return selectedVoice || spanishVoices[0] || voices[0] || null;
     };
 
-    const playSection = (index) => {
+    const playSection = (index, genderOverride = null) => {
         if (index < 0 || index >= voiceSections.length) {
             stopReading();
             return;
@@ -144,17 +145,19 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
         setIsReading(true);
         setCurrentSectionIndex(index);
         
+        // Use provided override or default to the state previously selected
+        const activeGender = genderOverride || selectedVoiceGender;
+        if (genderOverride && genderOverride !== selectedVoiceGender) {
+            setSelectedVoiceGender(genderOverride);
+        }
+        
         setTimeout(() => {
             if (readingTokenRef.current !== token) return;
 
             const utterance = new SpeechSynthesisUtterance(voiceSections[index]);
             utterance.lang = 'es-ES';
             
-            // Check session storage first (if unlocked via Key with specific voice), then chapter preference
-            const sessionVoz = sessionStorage.getItem(`play_voz_${chapter?.id}`);
-            const preferredGender = sessionVoz || chapter?.play_voz || 'F';
-            
-            const voice = getBestVoice(preferredGender);
+            const voice = getBestVoice(activeGender);
             if (voice) {
                 utterance.voice = voice;
             }
@@ -537,7 +540,7 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
             {showVoiceModal && (
                 <div className="reader-overlay access-overlay" style={{ zIndex: 3000 }}>
                     <div className="reader-content access-prompt" style={{
-                        maxWidth: '400px',
+                        maxWidth: '500px',
                         margin: 'auto',
                         textAlign: 'center',
                         padding: '30px 20px',
@@ -549,7 +552,7 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                         <div style={{ fontSize: '2.5rem', marginBottom: '15px' }}>🔊</div>
                         <h3 style={{ color: 'gold', marginBottom: '10px' }}>Lectura por Voz</h3>
                         <p style={{ color: '#ccc', marginBottom: '25px', fontSize: '0.9rem' }}>
-                            ¿Deseas iniciar la reproducción del capítulo?
+                            ¿Con qué voz deseas escuchar el capítulo?
                         </p>
                         <div style={{ display: 'flex', gap: '10px' }}>
                             <button 
@@ -563,11 +566,21 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                                 className="btn" 
                                 onClick={() => {
                                     setShowVoiceModal(false);
-                                    playSection(0);
+                                    playSection(0, 'F');
                                 }}
-                                style={{ flex: 1, background: 'gold', color: 'black', border: 'none', fontWeight: 'bold' }}
+                                style={{ flex: 1, background: '#ff66b2', color: 'white', border: '1px solid #ff1a8c', fontWeight: 'bold' }}
                             >
-                                Reproducir
+                                Escuchar F
+                            </button>
+                            <button 
+                                className="btn" 
+                                onClick={() => {
+                                    setShowVoiceModal(false);
+                                    playSection(0, 'M');
+                                }}
+                                style={{ flex: 1, background: '#4d94ff', color: 'white', border: '1px solid #005ce6', fontWeight: 'bold' }}
+                            >
+                                Escuchar M
                             </button>
                         </div>
                     </div>
