@@ -40,6 +40,8 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
     const [voiceSections, setVoiceSections] = useState([]);
     const [currentSectionIndex, setCurrentSectionIndex] = useState(-1);
     const [isPlayingAll, setIsPlayingAll] = useState(false);
+    const [totalWords, setTotalWords] = useState(0);
+    const [blockToSectionMap, setBlockToSectionMap] = useState({});
 
     // Access Control State
     const [accessCode, setAccessCode] = useState('');
@@ -71,30 +73,67 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
     useEffect(() => {
         if (!chapter || !chapter.contenido) return;
         
-        const cleanContent = chapter.contenido.replace(/\[img:\s*.*?\]/g, '[[IMG_MARKER]]');
-        const roughParts = cleanContent.split(/(\[\[IMG_MARKER\]\]|(?=--))/);
+        // Extract natural text blocks
+        const parts = chapter.contenido.split(/\[img:.*?\]/);
+        const textBlocks = parts.map(p => p.trim()).filter(p => p);
         
-        const sections = [];
-        roughParts.forEach(part => {
-            if (!part || part === '[[IMG_MARKER]]') return;
-            
-            const trimmed = part.trim();
-            if (!trimmed) return;
+        const cleanFull = chapter.contenido.replace(/\[img:\s*.*?\]/g, '').trim();
+        const wordsCount = cleanFull.split(/\s+/).filter(w => w).length;
+        setTotalWords(wordsCount);
 
-            // Further split if too long (approx 400 words to be safe)
-            const words = trimmed.split(/\s+/);
-            if (words.length > 400) {
-                for (let i = 0; i < words.length; i += 400) {
-                    const chunk = words.slice(i, i + 400).join(' ');
-                    sections.push(chunk);
+        let finalSects = [];
+        let mapping = {}; // textBlockIndex -> sectionIndex
+
+        if (wordsCount <= 500) {
+            // Short chapter: Single section, all blocks point to it
+            finalSects = [cleanFull];
+            textBlocks.forEach((_, i) => { mapping[i] = 0; });
+        } else {
+            // Long chapter: Segment by natural blocks and split if very large
+            textBlocks.forEach((block, bIdx) => {
+                const bWords = block.split(/\s+/).filter(w => w);
+                const startIdx = finalSects.length;
+                if (bWords.length > 450) {
+                    for (let i = 0; i < bWords.length; i += 450) {
+                        finalSects.push(bWords.slice(i, i + 450).join(' '));
+                    }
+                } else {
+                    finalSects.push(block);
                 }
-            } else {
-                sections.push(trimmed);
-            }
-        });
+                mapping[bIdx] = startIdx;
+            });
+        }
 
-        setVoiceSections(sections);
-    }, [chapter?.id]);
+        setVoiceSections(finalSects);
+        setBlockToSectionMap(mapping);
+    }, [chapter?.id, chapter?.contenido]);
+
+    const getBestVoice = (gender) => {
+        const voices = window.speechSynthesis.getVoices();
+        // Priority: Spanish + exact gender match
+        const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+        
+        let selectedVoice = null;
+        if (gender === 'M') {
+            // Find male-sounding voices (usually have names like Pablo, Microsoft Pablo, etc.)
+            selectedVoice = spanishVoices.find(v => 
+                v.name.toLowerCase().includes('pablo') || 
+                v.name.toLowerCase().includes('male') ||
+                v.name.toLowerCase().includes('man')
+            );
+        } else {
+            // Find female-sounding voices (Helena, Sabina, female, etc.)
+            selectedVoice = spanishVoices.find(v => 
+                v.name.toLowerCase().includes('helena') || 
+                v.name.toLowerCase().includes('sabina') || 
+                v.name.toLowerCase().includes('female') ||
+                v.name.toLowerCase().includes('woman')
+            );
+        }
+        
+        // Fallback to first Spanish voice if gender specific not found
+        return selectedVoice || spanishVoices[0] || voices[0];
+    };
 
     const playSection = (index, playAll = false) => {
         if (index < 0 || index >= voiceSections.length) {
@@ -108,6 +147,12 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
         
         const utterance = new SpeechSynthesisUtterance(voiceSections[index]);
         utterance.lang = 'es-ES';
+        
+        // Apply voice based on chapter preference
+        const preferredGender = chapter?.play_voz || 'F';
+        const voice = getBestVoice(preferredGender);
+        if (voice) utterance.voice = voice;
+        
         utterance.rate = 1.0;
         
         utterance.onstart = () => {
@@ -417,9 +462,20 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                         >
                             {copied ? '✓ Copiado' : '📋 Copiar'}
                         </button>
-                        {groupedContent.length > 0 ? (
-                            groupedContent.map((block, index) => {
+                        {groupedContent.length > 0 ? (() => {
+                            let textBlockCounter = 0;
+                            return groupedContent.map((block, index) => {
                                 if (block.type === 'text') {
+                                    const currentBlockIndex = textBlockCounter++;
+                                    const sectionIndex = blockToSectionMap[currentBlockIndex];
+                                    
+                                    // Check if currentSectionIndex falls within this block's sections
+                                    const nextBlockSectionIndex = blockToSectionMap[currentBlockIndex + 1] !== undefined 
+                                        ? blockToSectionMap[currentBlockIndex + 1] 
+                                        : voiceSections.length;
+                                        
+                                    const isActive = currentSectionIndex >= sectionIndex && currentSectionIndex < nextBlockSectionIndex;
+
                                     // Detect lines starting with -- and wrap them
                                     const processedContent = block.content.split('\n').map(line => {
                                         if (line.trim().startsWith('--')) {
@@ -427,23 +483,54 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                                         }
                                         return line;
                                     }).join('\n');
-                                    return <div key={index} dangerouslySetInnerHTML={{ __html: processedContent }} />;
+                                    
+                                    return (
+                                        <div key={index} style={{ 
+                                            position: 'relative', 
+                                            paddingLeft: '35px', 
+                                            marginBottom: '1.5rem',
+                                            transition: 'all 0.3s'
+                                        }}>
+                                            <button 
+                                                onClick={() => playSection(sectionIndex)}
+                                                style={{
+                                                    position: 'absolute',
+                                                    left: '0',
+                                                    top: '0',
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: isActive ? 'var(--accent-color)' : 'gold',
+                                                    cursor: 'pointer',
+                                                    fontSize: '1.2rem',
+                                                    opacity: isActive ? 1 : 0.3,
+                                                    padding: '0',
+                                                    transition: 'all 0.2s',
+                                                    transform: isActive ? 'scale(1.2)' : 'scale(1)'
+                                                }}
+                                                title="Reproducir desde aquí"
+                                            >
+                                                {isActive ? '▶️' : '▶'}
+                                            </button>
+                                            <div dangerouslySetInnerHTML={{ __html: processedContent }} />
+                                        </div>
+                                    );
                                 } else if (block.type === 'images') {
+                                    // ...
                                     if (block.items.length === 1) {
-                                        return <img key={index} src={getImageUrl(block.items[0])} className="single-image" alt="Chapter Content" />;
+                                        return <img key={index} src={getImageUrl(block.items[0])} className="single-image" style={{ marginLeft: '35px' }} alt="Chapter Content" />;
                                     } else if (block.items.length === 2) {
                                         return (
-                                            <div key={index} className="double-image-grid">
+                                            <div key={index} className="double-image-grid" style={{ marginLeft: '35px' }}>
                                                 {block.items.map((img, i) => <img key={i} src={getImageUrl(img)} alt="Chapter Content" />)}
                                             </div>
                                         );
                                     } else {
-                                        return <GalleryLayout key={index} images={block.items} />;
+                                        return <div key={index} style={{ marginLeft: '35px' }}><GalleryLayout images={block.items} /></div>;
                                     }
                                 }
                                 return null;
-                            })
-                        ) : (
+                            });
+                        })() : (
                             <p>Contenido no disponible.</p>
                         )}
                     </div>
@@ -478,34 +565,40 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                             marginBottom: '20px',
                             paddingRight: '5px'
                         }}>
-                            {voiceSections.map((section, idx) => (
-                                <div key={idx} style={{ 
-                                    padding: '12px', 
-                                    borderBottom: '1px solid #333',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    background: currentSectionIndex === idx ? 'rgba(255, 215, 0, 0.1)' : 'transparent'
-                                }}>
-                                    <div style={{ flex: 1, marginRight: '10px' }}>
-                                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#ccc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                            {idx + 1}. {section.substring(0, 50)}...
-                                        </p>
+                            {totalWords > 500 ? (
+                                voiceSections.map((section, idx) => (
+                                    <div key={idx} style={{ 
+                                        padding: '12px', 
+                                        borderBottom: '1px solid #333',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        background: currentSectionIndex === idx ? 'rgba(255, 215, 0, 0.1)' : 'transparent'
+                                    }}>
+                                        <div style={{ flex: 1, marginRight: '10px' }}>
+                                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#ccc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {idx + 1}. {section.substring(0, 50)}...
+                                            </p>
+                                        </div>
+                                        <button 
+                                            className="btn" 
+                                            onClick={() => playSection(idx)}
+                                            style={{ 
+                                                padding: '4px 8px', 
+                                                fontSize: '0.7rem',
+                                                borderColor: currentSectionIndex === idx ? 'gold' : '#555',
+                                                color: currentSectionIndex === idx ? 'gold' : '#888'
+                                            }}
+                                        >
+                                            {currentSectionIndex === idx ? 'Reproduciendo...' : 'Reproducir'}
+                                        </button>
                                     </div>
-                                    <button 
-                                        className="btn" 
-                                        onClick={() => playSection(idx)}
-                                        style={{ 
-                                            padding: '4px 8px', 
-                                            fontSize: '0.7rem',
-                                            borderColor: currentSectionIndex === idx ? 'gold' : '#555',
-                                            color: currentSectionIndex === idx ? 'gold' : '#888'
-                                        }}
-                                    >
-                                        {currentSectionIndex === idx ? 'Playing...' : 'Play'}
-                                    </button>
+                                ))
+                            ) : (
+                                <div style={{ padding: '20px', color: '#888', fontStyle: 'italic' }}>
+                                    Capítulo corto: se reproducirá como una sola sección.
                                 </div>
-                            ))}
+                            )}
                         </div>
 
                         <div style={{ display: 'flex', gap: '10px' }}>
