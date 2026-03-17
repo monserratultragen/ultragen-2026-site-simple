@@ -58,6 +58,17 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
 
     console.warn(`[DEBUG-VIP] Chapter: ${chapter?.nombre} (ID: ${chapter?.id}) | is_vip: ${chapter?.is_vip} | Start Unlocked: ${!isActuallyVip}`);
 
+    // Force load voices on mount for Chrome bug
+    useEffect(() => {
+        const loadVoices = () => {
+            window.speechSynthesis.getVoices();
+        };
+        loadVoices();
+        if (typeof window.speechSynthesis.onvoiceschanged !== 'undefined') {
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+    }, []);
+
     const handleCopy = () => {
         if (!chapter || !chapter.contenido) return;
         // Clean text: remove [img:...] tags and extra whitespace
@@ -93,13 +104,16 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
     const getBestVoice = (gender) => {
         const voices = window.speechSynthesis.getVoices();
         // Priority: Spanish + exact gender match
-        const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+        const spanishVoices = voices.filter(v => v.lang.startsWith('es') || v.lang.startsWith('ES'));
         
         let selectedVoice = null;
         if (gender === 'M') {
             // Find male-sounding voices (usually have names like Pablo, Microsoft Pablo, etc.)
             selectedVoice = spanishVoices.find(v => 
                 v.name.toLowerCase().includes('pablo') || 
+                v.name.toLowerCase().includes('raul') ||
+                v.name.toLowerCase().includes('jorge') ||
+                v.name.toLowerCase().includes('diego') ||
                 v.name.toLowerCase().includes('male') ||
                 v.name.toLowerCase().includes('man')
             );
@@ -108,13 +122,15 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
             selectedVoice = spanishVoices.find(v => 
                 v.name.toLowerCase().includes('helena') || 
                 v.name.toLowerCase().includes('sabina') || 
+                v.name.toLowerCase().includes('laura') || 
+                v.name.toLowerCase().includes('mia') ||
                 v.name.toLowerCase().includes('female') ||
                 v.name.toLowerCase().includes('woman')
             );
         }
         
         // Fallback to first Spanish voice if gender specific not found
-        return selectedVoice || spanishVoices[0] || voices[0];
+        return selectedVoice || spanishVoices[0] || voices[0] || null;
     };
 
     const playSection = (index) => {
@@ -134,9 +150,14 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
             const utterance = new SpeechSynthesisUtterance(voiceSections[index]);
             utterance.lang = 'es-ES';
             
-            const preferredGender = chapter?.play_voz || 'F';
+            // Check session storage first (if unlocked via Key with specific voice), then chapter preference
+            const sessionVoz = sessionStorage.getItem(`play_voz_${chapter?.id}`);
+            const preferredGender = sessionVoz || chapter?.play_voz || 'F';
+            
             const voice = getBestVoice(preferredGender);
-            if (voice) utterance.voice = voice;
+            if (voice) {
+                utterance.voice = voice;
+            }
             
             utterance.rate = 1.0;
             
@@ -182,8 +203,12 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                     console.warn("[DEBUG-VIP] Master Key detected! Global unlock activated.");
                     sessionStorage.setItem('master_unlocked', 'true');
                     if (onMasterUnlock) onMasterUnlock();
-                } else {
-                    sessionStorage.setItem(`unlocked_${chapter.id}`, 'true');
+                }
+                // Always set chapter-specific unlock, even if master key
+                sessionStorage.setItem(`unlocked_${chapter.id}`, 'true');
+                // Store play_voz override if provided by the key
+                if (data.play_voz) {
+                    sessionStorage.setItem(`play_voz_${chapter.id}`, data.play_voz);
                 }
             } else {
                 setError(data.mensaje || 'Código incorrecto o expirado');
