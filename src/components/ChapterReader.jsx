@@ -37,6 +37,9 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
     const [copied, setCopied] = useState(false);
     const [showVoiceModal, setShowVoiceModal] = useState(false);
     const [isReading, setIsReading] = useState(false);
+    const [voiceSections, setVoiceSections] = useState([]);
+    const [currentSectionIndex, setCurrentSectionIndex] = useState(-1);
+    const [isPlayingAll, setIsPlayingAll] = useState(false);
 
     // Access Control State
     const [accessCode, setAccessCode] = useState('');
@@ -64,37 +67,84 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
         });
     };
 
-    const startReading = () => {
+    // Segmentation logic
+    useEffect(() => {
         if (!chapter || !chapter.contenido) return;
         
-        // Stop any current reading
+        const cleanContent = chapter.contenido.replace(/\[img:\s*.*?\]/g, '[[IMG_MARKER]]');
+        const roughParts = cleanContent.split(/(\[\[IMG_MARKER\]\]|(?=--))/);
+        
+        const sections = [];
+        roughParts.forEach(part => {
+            if (!part || part === '[[IMG_MARKER]]') return;
+            
+            const trimmed = part.trim();
+            if (!trimmed) return;
+
+            // Further split if too long (approx 400 words to be safe)
+            const words = trimmed.split(/\s+/);
+            if (words.length > 400) {
+                for (let i = 0; i < words.length; i += 400) {
+                    const chunk = words.slice(i, i + 400).join(' ');
+                    sections.push(chunk);
+                }
+            } else {
+                sections.push(trimmed);
+            }
+        });
+
+        setVoiceSections(sections);
+    }, [chapter?.id]);
+
+    const playSection = (index, playAll = false) => {
+        if (index < 0 || index >= voiceSections.length) {
+            setIsReading(false);
+            setIsPlayingAll(false);
+            setCurrentSectionIndex(-1);
+            return;
+        }
+
         window.speechSynthesis.cancel();
         
-        const cleanText = chapter.contenido
-            .replace(/\[img:\s*.*?\]/g, '')
-            .replace(/\n\s*\n/g, '\n\n')
-            .trim();
-            
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.lang = 'es-ES'; // Set to Spanish
+        const utterance = new SpeechSynthesisUtterance(voiceSections[index]);
+        utterance.lang = 'es-ES';
         utterance.rate = 1.0;
         
+        utterance.onstart = () => {
+            setIsReading(true);
+            setCurrentSectionIndex(index);
+        };
+
         utterance.onend = () => {
-            setIsReading(false);
+            if (playAll) {
+                playSection(index + 1, true);
+            } else {
+                setIsReading(false);
+                setIsPlayingAll(false);
+                setCurrentSectionIndex(-1);
+            }
         };
-        
-        utterance.onerror = () => {
+
+        utterance.onerror = (event) => {
+            console.error("SpeechSynthesis error:", event);
             setIsReading(false);
+            setIsPlayingAll(false);
+            setCurrentSectionIndex(-1);
         };
-        
-        setIsReading(true);
-        setShowVoiceModal(false);
+
         window.speechSynthesis.speak(utterance);
+    };
+
+    const startReadingAll = () => {
+        setIsPlayingAll(true);
+        playSection(0, true);
     };
 
     const stopReading = () => {
         window.speechSynthesis.cancel();
         setIsReading(false);
+        setIsPlayingAll(false);
+        setCurrentSectionIndex(-1);
     };
 
     const handleValidate = async (e) => {
@@ -403,34 +453,81 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
             {showVoiceModal && (
                 <div className="reader-overlay access-overlay" style={{ zIndex: 3000 }}>
                     <div className="reader-content access-prompt" style={{
-                        maxWidth: '400px',
+                        maxWidth: '500px',
                         margin: 'auto',
                         textAlign: 'center',
                         padding: '30px 20px',
                         backgroundColor: '#1a1a1a',
                         border: '1px solid gold',
                         boxShadow: '0 0 20px rgba(255, 215, 0, 0.3)',
-                        height: 'auto'
+                        height: 'auto',
+                        maxHeight: '90vh',
+                        display: 'flex',
+                        flexDirection: 'column'
                     }}>
-                        <div style={{ fontSize: '2.5rem', marginBottom: '15px' }}>🔊</div>
-                        <h3 style={{ color: 'gold', marginBottom: '10px' }}>Lectura por Voz</h3>
-                        <p style={{ color: '#ccc', marginBottom: '25px', fontSize: '0.9rem' }}>
-                            ¿Deseas iniciar la reproducción por voz de este capítulo?
+                        <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🔊</div>
+                        <h3 style={{ color: 'gold', marginBottom: '5px' }}>Lectura por Voz</h3>
+                        <p style={{ color: '#888', marginBottom: '20px', fontSize: '0.8rem' }}>
+                            Selecciona una sección o reproduce todo el capítulo.
                         </p>
+
+                        <div className="voice-sections-list" style={{ 
+                            flex: 1, 
+                            overflowY: 'auto', 
+                            textAlign: 'left', 
+                            marginBottom: '20px',
+                            paddingRight: '5px'
+                        }}>
+                            {voiceSections.map((section, idx) => (
+                                <div key={idx} style={{ 
+                                    padding: '12px', 
+                                    borderBottom: '1px solid #333',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    background: currentSectionIndex === idx ? 'rgba(255, 215, 0, 0.1)' : 'transparent'
+                                }}>
+                                    <div style={{ flex: 1, marginRight: '10px' }}>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#ccc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {idx + 1}. {section.substring(0, 50)}...
+                                        </p>
+                                    </div>
+                                    <button 
+                                        className="btn" 
+                                        onClick={() => playSection(idx)}
+                                        style={{ 
+                                            padding: '4px 8px', 
+                                            fontSize: '0.7rem',
+                                            borderColor: currentSectionIndex === idx ? 'gold' : '#555',
+                                            color: currentSectionIndex === idx ? 'gold' : '#888'
+                                        }}
+                                    >
+                                        {currentSectionIndex === idx ? 'Playing...' : 'Play'}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
                         <div style={{ display: 'flex', gap: '10px' }}>
                             <button 
                                 className="btn" 
                                 onClick={() => setShowVoiceModal(false)}
                                 style={{ flex: 1, borderColor: '#555', color: '#888' }}
                             >
-                                Cancelar
+                                Cerrar
                             </button>
                             <button 
                                 className="btn" 
-                                onClick={startReading}
-                                style={{ flex: 1, background: 'gold', color: 'black', border: 'none' }}
+                                onClick={isPlayingAll ? stopReading : startReadingAll}
+                                style={{ 
+                                    flex: 1, 
+                                    background: isPlayingAll ? '#ff4d4d' : 'gold', 
+                                    color: 'black', 
+                                    border: 'none',
+                                    fontWeight: 'bold'
+                                }}
                             >
-                                Reproducir
+                                {isPlayingAll ? '⏹ Detener' : '▶ Reproducir Todo'}
                             </button>
                         </div>
                     </div>
