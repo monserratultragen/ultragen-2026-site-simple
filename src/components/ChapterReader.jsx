@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { getImageUrl as resolveUrl } from '../utils/imageUtils';
 
 const getImageUrl = (tag) => {
@@ -39,9 +39,8 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
     const [isReading, setIsReading] = useState(false);
     const [voiceSections, setVoiceSections] = useState([]);
     const [currentSectionIndex, setCurrentSectionIndex] = useState(-1);
-    const [isPlayingAll, setIsPlayingAll] = useState(false);
-    const [totalWords, setTotalWords] = useState(0);
-    const [blockToSectionMap, setBlockToSectionMap] = useState({});
+    
+    const readingTokenRef = useRef(0);
 
     // Access Control State
     const [accessCode, setAccessCode] = useState('');
@@ -69,43 +68,26 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
         });
     };
 
-    // Segmentation logic
+    // Segmentation logic: extract every paragraph as a section
     useEffect(() => {
         if (!chapter || !chapter.contenido) return;
         
-        // Extract natural text blocks
-        const parts = chapter.contenido.split(/\[img:.*?\]/);
-        const textBlocks = parts.map(p => p.trim()).filter(p => p);
+        let targetSections = [];
+        const contentParts = chapter.contenido.split(/(\[img:.*?\])/);
         
-        const cleanFull = chapter.contenido.replace(/\[img:\s*.*?\]/g, '').trim();
-        const wordsCount = cleanFull.split(/\s+/).filter(w => w).length;
-        setTotalWords(wordsCount);
-
-        let finalSects = [];
-        let mapping = {}; // textBlockIndex -> sectionIndex
-
-        if (wordsCount <= 500) {
-            // Short chapter: Single section, all blocks point to it
-            finalSects = [cleanFull];
-            textBlocks.forEach((_, i) => { mapping[i] = 0; });
-        } else {
-            // Long chapter: Segment by natural blocks and split if very large
-            textBlocks.forEach((block, bIdx) => {
-                const bWords = block.split(/\s+/).filter(w => w);
-                const startIdx = finalSects.length;
-                if (bWords.length > 450) {
-                    for (let i = 0; i < bWords.length; i += 450) {
-                        finalSects.push(bWords.slice(i, i + 450).join(' '));
+        contentParts.forEach(part => {
+            if (!part.match(/\[img:.*?\]/)) {
+                const lines = part.split('\n');
+                lines.forEach(line => {
+                    const trimmed = line.trim();
+                    if (trimmed) {
+                        targetSections.push(trimmed);
                     }
-                } else {
-                    finalSects.push(block);
-                }
-                mapping[bIdx] = startIdx;
-            });
-        }
+                });
+            }
+        });
 
-        setVoiceSections(finalSects);
-        setBlockToSectionMap(mapping);
+        setVoiceSections(targetSections);
     }, [chapter?.id, chapter?.contenido]);
 
     const getBestVoice = (gender) => {
@@ -135,61 +117,48 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
         return selectedVoice || spanishVoices[0] || voices[0];
     };
 
-    const playSection = (index, playAll = false) => {
+    const playSection = (index) => {
         if (index < 0 || index >= voiceSections.length) {
-            setIsReading(false);
-            setIsPlayingAll(false);
-            setCurrentSectionIndex(-1);
+            stopReading();
             return;
         }
 
         window.speechSynthesis.cancel();
+        const token = ++readingTokenRef.current;
+        setIsReading(true);
+        setCurrentSectionIndex(index);
         
-        const utterance = new SpeechSynthesisUtterance(voiceSections[index]);
-        utterance.lang = 'es-ES';
-        
-        // Apply voice based on chapter preference
-        const preferredGender = chapter?.play_voz || 'F';
-        const voice = getBestVoice(preferredGender);
-        if (voice) utterance.voice = voice;
-        
-        utterance.rate = 1.0;
-        
-        utterance.onstart = () => {
-            setIsReading(true);
-            setCurrentSectionIndex(index);
-        };
+        setTimeout(() => {
+            if (readingTokenRef.current !== token) return;
 
-        utterance.onend = () => {
-            if (playAll) {
-                playSection(index + 1, true);
-            } else {
-                setIsReading(false);
-                setIsPlayingAll(false);
-                setCurrentSectionIndex(-1);
-            }
-        };
+            const utterance = new SpeechSynthesisUtterance(voiceSections[index]);
+            utterance.lang = 'es-ES';
+            
+            const preferredGender = chapter?.play_voz || 'F';
+            const voice = getBestVoice(preferredGender);
+            if (voice) utterance.voice = voice;
+            
+            utterance.rate = 1.0;
+            
+            utterance.onend = () => {
+                if (readingTokenRef.current === token) {
+                    playSection(index + 1);
+                }
+            };
 
-        utterance.onerror = (event) => {
-            console.error("SpeechSynthesis error:", event);
-            setIsReading(false);
-            setIsPlayingAll(false);
-            setCurrentSectionIndex(-1);
-        };
+            utterance.onerror = (e) => {
+                // ignore
+            };
 
-        window.speechSynthesis.speak(utterance);
-    };
-
-    const startReadingAll = () => {
-        setIsPlayingAll(true);
-        playSection(0, true);
+            window.speechSynthesis.speak(utterance);
+        }, 50);
     };
 
     const stopReading = () => {
-        window.speechSynthesis.cancel();
+        readingTokenRef.current++;
         setIsReading(false);
-        setIsPlayingAll(false);
         setCurrentSectionIndex(-1);
+        window.speechSynthesis.cancel();
     };
 
     const handleValidate = async (e) => {
@@ -463,55 +432,58 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                             {copied ? '✓ Copiado' : '📋 Copiar'}
                         </button>
                         {groupedContent.length > 0 ? (() => {
-                            let textBlockCounter = 0;
+                            let globalParagraphIndex = 0;
                             return groupedContent.map((block, index) => {
                                 if (block.type === 'text') {
-                                    const currentBlockIndex = textBlockCounter++;
-                                    const sectionIndex = blockToSectionMap[currentBlockIndex];
-                                    
-                                    // Check if currentSectionIndex falls within this block's sections
-                                    const nextBlockSectionIndex = blockToSectionMap[currentBlockIndex + 1] !== undefined 
-                                        ? blockToSectionMap[currentBlockIndex + 1] 
-                                        : voiceSections.length;
-                                        
-                                    const isActive = currentSectionIndex >= sectionIndex && currentSectionIndex < nextBlockSectionIndex;
-
-                                    // Detect lines starting with -- and wrap them
-                                    const processedContent = block.content.split('\n').map(line => {
-                                        if (line.trim().startsWith('--')) {
-                                            return `<span class="scene-marker">${line}</span>`;
-                                        }
-                                        return line;
-                                    }).join('\n');
-                                    
+                                    const lines = block.content.split('\n');
                                     return (
-                                        <div key={index} style={{ 
-                                            position: 'relative', 
-                                            paddingLeft: '35px', 
-                                            marginBottom: '1.5rem',
-                                            transition: 'all 0.3s'
-                                        }}>
-                                            <button 
-                                                onClick={() => playSection(sectionIndex)}
-                                                style={{
-                                                    position: 'absolute',
-                                                    left: '0',
-                                                    top: '0',
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    color: isActive ? 'var(--accent-color)' : 'gold',
-                                                    cursor: 'pointer',
-                                                    fontSize: '1.2rem',
-                                                    opacity: isActive ? 1 : 0.3,
-                                                    padding: '0',
-                                                    transition: 'all 0.2s',
-                                                    transform: isActive ? 'scale(1.2)' : 'scale(1)'
-                                                }}
-                                                title="Reproducir desde aquí"
-                                            >
-                                                {isActive ? '▶️' : '▶'}
-                                            </button>
-                                            <div dangerouslySetInnerHTML={{ __html: processedContent }} />
+                                        <div key={index} style={{ marginBottom: '1.5rem' }}>
+                                            {lines.map((line, lIdx) => {
+                                                if (!line.trim()) {
+                                                    return <br key={lIdx} />;
+                                                }
+                                                
+                                                const currentPIndex = globalParagraphIndex++;
+                                                const isActive = currentSectionIndex === currentPIndex;
+                                                
+                                                let processedLine = line;
+                                                if (line.trim().startsWith('--')) {
+                                                    processedLine = `<span class="scene-marker">${line}</span>`;
+                                                }
+                                                
+                                                return (
+                                                    <div key={lIdx} style={{ 
+                                                        position: 'relative', 
+                                                        paddingLeft: '35px', 
+                                                        marginBottom: '0.8rem',
+                                                        transition: 'all 0.3s',
+                                                        minHeight: '24px'
+                                                    }}>
+                                                        <button 
+                                                            onClick={() => playSection(currentPIndex)}
+                                                            className="voice-play-arrow"
+                                                            style={{
+                                                                position: 'absolute',
+                                                                left: '0',
+                                                                top: '2px',
+                                                                background: 'none',
+                                                                border: 'none',
+                                                                color: isActive ? 'var(--accent-color, #ff4d4d)' : 'gold',
+                                                                cursor: 'pointer',
+                                                                fontSize: '1.2rem',
+                                                                opacity: isActive ? 1 : 0.3,
+                                                                padding: '0',
+                                                                transition: 'all 0.2s',
+                                                                transform: isActive ? 'scale(1.2)' : 'scale(1)'
+                                                            }}
+                                                            title="Reproducir desde aquí"
+                                                        >
+                                                            {isActive ? '▶️' : '▶'}
+                                                        </button>
+                                                        <div dangerouslySetInnerHTML={{ __html: processedLine }} style={{ display: 'inline-block', width: '100%' }} />
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     );
                                 } else if (block.type === 'images') {
@@ -540,87 +512,37 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
             {showVoiceModal && (
                 <div className="reader-overlay access-overlay" style={{ zIndex: 3000 }}>
                     <div className="reader-content access-prompt" style={{
-                        maxWidth: '500px',
+                        maxWidth: '400px',
                         margin: 'auto',
                         textAlign: 'center',
                         padding: '30px 20px',
                         backgroundColor: '#1a1a1a',
                         border: '1px solid gold',
                         boxShadow: '0 0 20px rgba(255, 215, 0, 0.3)',
-                        height: 'auto',
-                        maxHeight: '90vh',
-                        display: 'flex',
-                        flexDirection: 'column'
+                        height: 'auto'
                     }}>
-                        <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🔊</div>
-                        <h3 style={{ color: 'gold', marginBottom: '5px' }}>Lectura por Voz</h3>
-                        <p style={{ color: '#888', marginBottom: '20px', fontSize: '0.8rem' }}>
-                            Selecciona una sección o reproduce todo el capítulo.
+                        <div style={{ fontSize: '2.5rem', marginBottom: '15px' }}>🔊</div>
+                        <h3 style={{ color: 'gold', marginBottom: '10px' }}>Lectura por Voz</h3>
+                        <p style={{ color: '#ccc', marginBottom: '25px', fontSize: '0.9rem' }}>
+                            ¿Deseas iniciar la reproducción del capítulo?
                         </p>
-
-                        <div className="voice-sections-list" style={{ 
-                            flex: 1, 
-                            overflowY: 'auto', 
-                            textAlign: 'left', 
-                            marginBottom: '20px',
-                            paddingRight: '5px'
-                        }}>
-                            {totalWords > 500 ? (
-                                voiceSections.map((section, idx) => (
-                                    <div key={idx} style={{ 
-                                        padding: '12px', 
-                                        borderBottom: '1px solid #333',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        background: currentSectionIndex === idx ? 'rgba(255, 215, 0, 0.1)' : 'transparent'
-                                    }}>
-                                        <div style={{ flex: 1, marginRight: '10px' }}>
-                                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#ccc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {idx + 1}. {section.substring(0, 50)}...
-                                            </p>
-                                        </div>
-                                        <button 
-                                            className="btn" 
-                                            onClick={() => playSection(idx)}
-                                            style={{ 
-                                                padding: '4px 8px', 
-                                                fontSize: '0.7rem',
-                                                borderColor: currentSectionIndex === idx ? 'gold' : '#555',
-                                                color: currentSectionIndex === idx ? 'gold' : '#888'
-                                            }}
-                                        >
-                                            {currentSectionIndex === idx ? 'Reproduciendo...' : 'Reproducir'}
-                                        </button>
-                                    </div>
-                                ))
-                            ) : (
-                                <div style={{ padding: '20px', color: '#888', fontStyle: 'italic' }}>
-                                    Capítulo corto: se reproducirá como una sola sección.
-                                </div>
-                            )}
-                        </div>
-
                         <div style={{ display: 'flex', gap: '10px' }}>
                             <button 
                                 className="btn" 
                                 onClick={() => setShowVoiceModal(false)}
                                 style={{ flex: 1, borderColor: '#555', color: '#888' }}
                             >
-                                Cerrar
+                                Cancelar
                             </button>
                             <button 
                                 className="btn" 
-                                onClick={isPlayingAll ? stopReading : startReadingAll}
-                                style={{ 
-                                    flex: 1, 
-                                    background: isPlayingAll ? '#ff4d4d' : 'gold', 
-                                    color: 'black', 
-                                    border: 'none',
-                                    fontWeight: 'bold'
+                                onClick={() => {
+                                    setShowVoiceModal(false);
+                                    playSection(0);
                                 }}
+                                style={{ flex: 1, background: 'gold', color: 'black', border: 'none', fontWeight: 'bold' }}
                             >
-                                {isPlayingAll ? '⏹ Detener' : '▶ Reproducir Todo'}
+                                Reproducir
                             </button>
                         </div>
                     </div>
