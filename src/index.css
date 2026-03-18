@@ -244,10 +244,19 @@ select:focus {
   }
 
   .reader-body {
-    padding: 20px 15px;
+    padding: 10px 8px 60px 8px;
     font-size: 1.05rem;
     line-height: 1.6;
     text-align: left;
+  }
+
+  .reader-text-block {
+    padding-left: 25px;
+  }
+
+  .reader-media-block {
+    margin-left: 25px;
+    max-width: calc(100% - 25px);
   }
 
   .close-reader-btn {
@@ -369,6 +378,7 @@ select:focus {
   flex: 1;
   padding: 40px 12px 80px 12px; /* Extra bottom padding */
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch; /* For smooth mobile scroll */
   overscroll-behavior: contain;
   font-family: var(--font-body);
@@ -378,6 +388,20 @@ select:focus {
   text-align: justify;
   white-space: pre-wrap;
   position: relative;
+}
+
+.reader-text-block {
+  position: relative;
+  padding-left: 35px;
+  margin-bottom: 0.8rem;
+  transition: all 0.4s ease;
+  min-height: 24px;
+}
+
+.reader-media-block {
+  margin-left: 35px;
+  max-width: calc(100% - 35px);
+  box-sizing: border-box;
 }
 
 .reader-body p {

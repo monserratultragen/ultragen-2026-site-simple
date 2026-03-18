@@ -39,8 +39,7 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
     const [isReading, setIsReading] = useState(false);
     const [voiceSections, setVoiceSections] = useState([]);
     const [currentSectionIndex, setCurrentSectionIndex] = useState(-1);
-    const [selectedVoiceGender, setSelectedVoiceGender] = useState('F');
-    
+
     const readingTokenRef = useRef(0);
 
     // Access Control State
@@ -83,10 +82,10 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
     // Segmentation logic: extract every paragraph as a section
     useEffect(() => {
         if (!chapter || !chapter.contenido) return;
-        
+
         let targetSections = [];
         const contentParts = chapter.contenido.split(/(\[img:.*?\])/);
-        
+
         contentParts.forEach(part => {
             if (!part.match(/\[img:.*?\]/)) {
                 const lines = part.split('\n');
@@ -106,35 +105,45 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
         const voices = window.speechSynthesis.getVoices();
         // Priority: Spanish + exact gender match
         const spanishVoices = voices.filter(v => v.lang.startsWith('es') || v.lang.startsWith('ES'));
-        
+
         let selectedVoice = null;
+        let isTrueMatch = false;
         if (gender === 'M') {
-            // Find male-sounding voices (usually have names like Pablo, Microsoft Pablo, etc.)
-            selectedVoice = spanishVoices.find(v => 
-                v.name.toLowerCase().includes('pablo') || 
+            // Find male-sounding voices
+            selectedVoice = spanishVoices.find(v =>
+                v.name.toLowerCase().includes('pablo') ||
                 v.name.toLowerCase().includes('raul') ||
                 v.name.toLowerCase().includes('jorge') ||
                 v.name.toLowerCase().includes('diego') ||
                 v.name.toLowerCase().includes('male') ||
                 v.name.toLowerCase().includes('man')
             );
+            if (selectedVoice) isTrueMatch = true;
         } else {
-            // Find female-sounding voices (Helena, Sabina, female, etc.)
-            selectedVoice = spanishVoices.find(v => 
-                v.name.toLowerCase().includes('helena') || 
-                v.name.toLowerCase().includes('sabina') || 
-                v.name.toLowerCase().includes('laura') || 
+            // Find female-sounding voices
+            selectedVoice = spanishVoices.find(v =>
+                v.name.toLowerCase().includes('helena') ||
+                v.name.toLowerCase().includes('sabina') ||
+                v.name.toLowerCase().includes('laura') ||
                 v.name.toLowerCase().includes('mia') ||
                 v.name.toLowerCase().includes('female') ||
                 v.name.toLowerCase().includes('woman')
             );
+            if (selectedVoice) isTrueMatch = true;
         }
-        
+
         // Fallback to first Spanish voice if gender specific not found
-        return selectedVoice || spanishVoices[0] || voices[0] || null;
+        const fallbackVoice = selectedVoice || spanishVoices[0] || voices[0] || null;
+        return { voice: fallbackVoice, isTrueMatch };
     };
 
-    const playSection = (index, genderOverride = null) => {
+    const playSection = (index) => {
+        // Stop if clicking the paragraph that is already playing
+        if (isReading && currentSectionIndex === index) {
+            stopReading();
+            return;
+        }
+
         if (index < 0 || index >= voiceSections.length) {
             stopReading();
             return;
@@ -144,26 +153,32 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
         const token = ++readingTokenRef.current;
         setIsReading(true);
         setCurrentSectionIndex(index);
-        
-        // Use provided override or default to the state previously selected
-        const activeGender = genderOverride || selectedVoiceGender;
-        if (genderOverride && genderOverride !== selectedVoiceGender) {
-            setSelectedVoiceGender(genderOverride);
-        }
-        
+
         setTimeout(() => {
             if (readingTokenRef.current !== token) return;
 
             const utterance = new SpeechSynthesisUtterance(voiceSections[index]);
             utterance.lang = 'es-ES';
-            
-            const voice = getBestVoice(activeGender);
+
+            // Priority: session storage (from access key), then chapter's own setting, then default F
+            const sessionVoz = sessionStorage.getItem(`play_voz_${chapter?.id}`);
+            const activeGender = sessionVoz || chapter?.play_voz || 'F';
+
+            const { voice, isTrueMatch } = getBestVoice(activeGender);
             if (voice) {
                 utterance.voice = voice;
             }
-            
+
+            // If user wants a male voice but we couldn't find a native one,
+            // lower the pitch to simulate a male voice using the default female
+            if (activeGender === 'M' && !isTrueMatch) {
+                utterance.pitch = 0.6;
+            } else {
+                utterance.pitch = 1.0;
+            }
+
             utterance.rate = 1.0;
-            
+
             utterance.onend = () => {
                 if (readingTokenRef.current === token) {
                     playSection(index + 1);
@@ -392,11 +407,11 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                     <p>{chapter.tomo_nombre} - {chapter.diario_nombre} {chapter.is_vip && <span style={{ color: 'gold' }}>[VIP]</span>}</p>
                     <div style={{ marginTop: '10px' }}>
                         {isReading ? (
-                            <button 
-                                className="btn" 
+                            <button
+                                className="btn"
                                 onClick={stopReading}
-                                style={{ 
-                                    borderColor: '#ff4d4d', 
+                                style={{
+                                    borderColor: '#ff4d4d',
                                     color: '#ff4d4d',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -407,11 +422,11 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                                 <span>⏹</span> Detener Lectura
                             </button>
                         ) : (
-                            <button 
-                                className="btn" 
+                            <button
+                                className="btn"
                                 onClick={() => setShowVoiceModal(true)}
-                                style={{ 
-                                    borderColor: 'gold', 
+                                style={{
+                                    borderColor: 'gold',
                                     color: 'gold',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -470,24 +485,20 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                                                 if (!line.trim()) {
                                                     return <br key={lIdx} />;
                                                 }
-                                                
+
                                                 const currentPIndex = globalParagraphIndex++;
                                                 const isActive = currentSectionIndex === currentPIndex;
-                                                
+
                                                 let processedLine = line;
                                                 if (line.trim().startsWith('--')) {
                                                     processedLine = `<span class="scene-marker">${line}</span>`;
                                                 }
-                                                
+
                                                 return (
-                                                    <div key={lIdx} style={{ 
-                                                        position: 'relative', 
-                                                        paddingLeft: '35px', 
-                                                        marginBottom: '0.8rem',
-                                                        transition: 'all 0.3s',
-                                                        minHeight: '24px'
+                                                    <div key={lIdx} className="reader-text-block" style={{
+                                                        opacity: (isReading && !isActive) ? 0.5 : 1 // Dim inactive paragraphs ONLY when reading
                                                     }}>
-                                                        <button 
+                                                        <button
                                                             onClick={() => playSection(currentPIndex)}
                                                             className="voice-play-arrow"
                                                             style={{
@@ -496,19 +507,32 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                                                                 top: '2px',
                                                                 background: 'none',
                                                                 border: 'none',
-                                                                color: isActive ? 'var(--accent-color, #ff4d4d)' : 'gold',
+                                                                // Intense glowing yellow when active, dim gold when not
+                                                                color: isActive ? '#fffb00' : 'gold',
+                                                                textShadow: isActive ? '0 0 10px rgba(255, 251, 0, 0.8)' : 'none',
                                                                 cursor: 'pointer',
                                                                 fontSize: '1.2rem',
                                                                 opacity: isActive ? 1 : 0.3,
                                                                 padding: '0',
-                                                                transition: 'all 0.2s',
+                                                                transition: 'all 0.3s ease',
                                                                 transform: isActive ? 'scale(1.2)' : 'scale(1)'
                                                             }}
                                                             title="Reproducir desde aquí"
                                                         >
-                                                            {isActive ? '▶️' : '▶'}
+                                                            {isActive ? '▶' : '▶'}
                                                         </button>
-                                                        <div dangerouslySetInnerHTML={{ __html: processedLine }} style={{ display: 'inline-block', width: '100%' }} />
+                                                        <div
+                                                            dangerouslySetInnerHTML={{ __html: processedLine }}
+                                                            style={{
+                                                                display: 'inline-block',
+                                                                width: '100%',
+                                                                transition: 'filter 0.4s ease, transform 0.4s ease',
+                                                                // Make the text more intense (brighter/saturated) when active
+                                                                filter: isActive ? 'brightness(1.4) saturate(1.3) contrast(1.1)' : 'none',
+                                                                transform: isActive ? 'scale(1.01)' : 'scale(1)',
+                                                                transformOrigin: 'left center'
+                                                            }}
+                                                        />
                                                     </div>
                                                 );
                                             })}
@@ -517,15 +541,15 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                                 } else if (block.type === 'images') {
                                     // ...
                                     if (block.items.length === 1) {
-                                        return <img key={index} src={getImageUrl(block.items[0])} className="single-image" style={{ marginLeft: '35px' }} alt="Chapter Content" />;
+                                        return <img key={index} src={getImageUrl(block.items[0])} className="single-image reader-media-block" alt="Chapter Content" />;
                                     } else if (block.items.length === 2) {
                                         return (
-                                            <div key={index} className="double-image-grid" style={{ marginLeft: '35px' }}>
+                                            <div key={index} className="double-image-grid reader-media-block">
                                                 {block.items.map((img, i) => <img key={i} src={getImageUrl(img)} alt="Chapter Content" />)}
                                             </div>
                                         );
                                     } else {
-                                        return <div key={index} style={{ marginLeft: '35px' }}><GalleryLayout images={block.items} /></div>;
+                                        return <div key={index} className="reader-media-block"><GalleryLayout images={block.items} /></div>;
                                     }
                                 }
                                 return null;
@@ -540,7 +564,7 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
             {showVoiceModal && (
                 <div className="reader-overlay access-overlay" style={{ zIndex: 3000 }}>
                     <div className="reader-content access-prompt" style={{
-                        maxWidth: '500px',
+                        maxWidth: '400px',
                         margin: 'auto',
                         textAlign: 'center',
                         padding: '30px 20px',
@@ -552,35 +576,25 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
                         <div style={{ fontSize: '2.5rem', marginBottom: '15px' }}>🔊</div>
                         <h3 style={{ color: 'gold', marginBottom: '10px' }}>Lectura por Voz</h3>
                         <p style={{ color: '#ccc', marginBottom: '25px', fontSize: '0.9rem' }}>
-                            ¿Con qué voz deseas escuchar el capítulo?
+                            ¿Deseas iniciar la reproducción del capítulo?
                         </p>
                         <div style={{ display: 'flex', gap: '10px' }}>
-                            <button 
-                                className="btn" 
+                            <button
+                                className="btn"
                                 onClick={() => setShowVoiceModal(false)}
                                 style={{ flex: 1, borderColor: '#555', color: '#888' }}
                             >
                                 Cancelar
                             </button>
-                            <button 
-                                className="btn" 
+                            <button
+                                className="btn"
                                 onClick={() => {
                                     setShowVoiceModal(false);
-                                    playSection(0, 'F');
+                                    playSection(0);
                                 }}
-                                style={{ flex: 1, background: '#ff66b2', color: 'white', border: '1px solid #ff1a8c', fontWeight: 'bold' }}
+                                style={{ flex: 1, background: 'gold', color: 'black', border: 'none', fontWeight: 'bold' }}
                             >
-                                Escuchar F
-                            </button>
-                            <button 
-                                className="btn" 
-                                onClick={() => {
-                                    setShowVoiceModal(false);
-                                    playSection(0, 'M');
-                                }}
-                                style={{ flex: 1, background: '#4d94ff', color: 'white', border: '1px solid #005ce6', fontWeight: 'bold' }}
-                            >
-                                Escuchar M
+                                Reproducir
                             </button>
                         </div>
                     </div>
