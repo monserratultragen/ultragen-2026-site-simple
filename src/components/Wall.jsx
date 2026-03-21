@@ -112,17 +112,6 @@ const Wall = ({ chapters, onOpenSupportModal, onNavigate }) => {
 
     return (
         <div className="container">
-            {/* Mini Support Button */}
-            <div className="wall-mini-support">
-                <button
-                    className="mini-support-btn"
-                    title="Invitame un cafecito 500L ✨💖"
-                    onClick={onOpenSupportModal}
-                >
-                    <span>☕</span>
-                </button>
-            </div>
-
             {/* Menus Section (Before Division Line) */}
             <div style={{ marginBottom: '30px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '20px' }}>
                 {/* Diarios Navigation */}

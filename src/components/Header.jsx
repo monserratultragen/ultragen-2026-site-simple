@@ -1,26 +1,32 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 
 const Header = ({ onLogout }) => {
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     if (onLogout) onLogout();
     auth.signOut().catch(console.error);
-    // State change in App.jsx will handle redirection to Landing
   };
-
-  const isMasterUnlocked = sessionStorage.getItem('master_unlocked') === 'true';
 
   return (
     <>
       <nav className="navbar">
         <div className="container nav-content" style={{ justifyContent: 'space-between' }}>
-          <div className="nav-logo" onClick={handleLogout} title="Cerrar sesión / Ir al inicio">
+          <div className="nav-logo" onClick={() => navigate('/')} title="Ir al inicio" style={{ cursor: 'pointer' }}>
             <span className="logo-text">Novelas de Monserrat</span>
             <span className="logo-sub">Versión ligera</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <button 
+                onClick={handleLogout} 
+                className="btn" 
+                style={{ fontSize: '0.7rem', opacity: 0.6, border: '1px solid #444' }}
+            >
+                Cerrar sesión
+            </button>
           </div>
         </div>
       </nav>

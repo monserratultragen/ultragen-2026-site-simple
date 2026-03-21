@@ -256,10 +256,12 @@ const ChapterReader = ({ chapter, onClose, onMasterUnlock }) => {
 
         document.documentElement.style.overflow = 'hidden';
         document.body.style.overflow = 'hidden';
+        document.body.classList.add('reader-active');
 
         return () => {
             document.documentElement.style.overflow = originalHtmlOverflow;
             document.body.style.overflow = originalBodyOverflow;
+            document.body.classList.remove('reader-active');
             window.speechSynthesis.cancel(); // Stop reading when closing the reader
         };
     }, []);

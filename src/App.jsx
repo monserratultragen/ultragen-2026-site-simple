@@ -203,6 +203,8 @@ function App() {
             onLogout={() => {
               setUser(null);
               localStorage.removeItem('ultragen_user');
+              sessionStorage.clear(); // Clear master_unlocked and other session flags
+              window.location.hash = '#/'; // Reset URL to prevent returning to last page on re-login
             }}
             onOpenSupportModal={() => setShowSupportModal(true)}
           />

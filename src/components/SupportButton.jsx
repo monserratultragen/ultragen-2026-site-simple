@@ -1,91 +1,126 @@
 import React, { useState, useEffect } from 'react';
 import monseAvatar from '../monse.png';
 
-const SupportButton = ({ onOpenModal }) => {
+const SupportButton = ({ onOpenModal, onVisibilityChange }) => {
     const [isVisible, setIsVisible] = useState(false);
     const [isSparkling, setIsSparkling] = useState(false);
 
-    useEffect(() => {
-        let timer;
-
-        const startCycle = () => {
-            // Initial 8s delay (or 5m break)
-            timer = setTimeout(() => {
-                setIsSparkling(true); // Start Tinkerbell effect
-                setIsVisible(true);
-
-                // Hide after 30s
-                timer = setTimeout(() => {
-                    setIsSparkling(true); // Exit sparkle
-                    setIsVisible(false);
-
-                    // Restart after 5 minutes
-                    timer = setTimeout(startCycle, 5 * 60 * 1000);
-                }, 30000);
-
-                // Stop entry sparkle after 1s
-                setTimeout(() => setIsSparkling(false), 1000);
-            }, isVisible ? 0 : 8000); // Use 8s for first one
-        };
-
-        // First run with 8s delay
-        timer = setTimeout(() => {
-            setIsVisible(true);
-            setIsSparkling(true);
-            setTimeout(() => setIsSparkling(false), 1000);
-
-            timer = setTimeout(() => {
-                setIsVisible(false);
-                setIsSparkling(true);
-                setTimeout(() => setIsSparkling(false), 1000);
-
-                // Schedule next appearance in 5m
-                const repeat = () => {
-                    const nextShow = () => {
-                        setIsVisible(true);
-                        setIsSparkling(true);
-                        setTimeout(() => setIsSparkling(false), 1000);
-
-                        setTimeout(() => {
-                            setIsVisible(false);
-                            setIsSparkling(true);
-                            setTimeout(() => setIsSparkling(false), 1000);
-                            setTimeout(nextShow, 5 * 60 * 1000);
-                        }, 30000);
-                    };
-                    setTimeout(nextShow, 5 * 60 * 1000);
-                };
-                repeat();
-            }, 30000);
-        }, 8000);
-
-        return () => clearTimeout(timer);
-    }, []);
-
-    // Cleaner Logic for the cycle
+    // Consolidated Cycle Logic
     useEffect(() => {
         let cycleTimer;
 
         const show = () => {
             setIsVisible(true);
             setIsSparkling(true);
+            if (onVisibilityChange) onVisibilityChange(true);
+            
+            // Stop entry sparkle after 2s
             setTimeout(() => setIsSparkling(false), 2000);
 
             cycleTimer = setTimeout(() => {
                 setIsVisible(false);
                 setIsSparkling(true);
+                if (onVisibilityChange) onVisibilityChange(false);
+                
+                // Stop exit sparkle after 2s
                 setTimeout(() => setIsSparkling(false), 2000);
+                
+                // Schedule next show in 5m
                 cycleTimer = setTimeout(show, 5 * 60 * 1000);
             }, 30000);
         };
 
+        // First appearance after 8s
         cycleTimer = setTimeout(show, 8000);
 
-        return () => clearTimeout(cycleTimer);
-    }, []);
+        return () => {
+            if (cycleTimer) clearTimeout(cycleTimer);
+        };
+    }, [onVisibilityChange]);
 
 
-    if (!isVisible && !isSparkling) return null;
+    // When not visible (the 5min interval), show the small coffee icon
+    // Render even when isSparkling is true if isVisible is false (to avoid 2s delay)
+    if (!isVisible) {
+        return (
+            <div 
+                onClick={onOpenModal}
+                className="mini-support-btn-floating"
+                style={{
+                    position: 'fixed',
+                    left: '50px', // Less 'esquinado'
+                    bottom: '60px', // Higher to align with where the avatar usually is
+                    zIndex: 9997,
+                    cursor: 'pointer',
+                    transition: 'all 0.5s ease',
+                    animation: 'fadeIn 0.5s ease-out'
+                }}
+            >
+                <div className="mini-support-btn">
+                    <span>☕</span>
+                </div>
+                <style>
+                    {`
+                        @keyframes fadeIn {
+                            from { opacity: 0; transform: scale(0.5); }
+                            to { opacity: 1; transform: scale(1); }
+                        }
+                        .mini-support-btn-floating .mini-support-btn {
+                            background: rgba(30, 30, 30, 0.8);
+                            color: #ff85a2;
+                            width: 50px;
+                            height: 50px;
+                            border-radius: 50%;
+                            font-size: 1.4rem;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            position: relative;
+                            overflow: hidden;
+                            border: none;
+                            backdrop-filter: blur(5px);
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                        }
+                        .mini-support-btn-floating .mini-support-btn::before {
+                            content: '';
+                            position: absolute;
+                            top: -50%;
+                            left: -50%;
+                            width: 200%;
+                            height: 200%;
+                            background: conic-gradient(from 0deg, transparent 70%, rgba(255, 247, 0, 0.8) 80%, #ff85a2 100%);
+                            animation: rotate-glow 2s linear infinite;
+                            z-index: 0;
+                        }
+                        .mini-support-btn-floating .mini-support-btn::after {
+                            content: '';
+                            position: absolute;
+                            top: 2px;
+                            left: 2px;
+                            right: 2px;
+                            bottom: 2px;
+                            background: rgba(30, 30, 30, 0.95);
+                            border-radius: 50%;
+                            z-index: 1;
+                        }
+                        .mini-support-btn-floating .mini-support-btn span {
+                            position: relative;
+                            z-index: 2;
+                        }
+                        @keyframes rotate-glow {
+                            from { transform: rotate(0deg); }
+                            to { transform: rotate(360deg); }
+                        }
+                        @media (max-width: 600px) {
+                            body.reader-active .mini-support-btn-floating {
+                                display: none !important;
+                            }
+                        }
+                    `}
+                </style>
+            </div>
+        );
+    }
 
     return (
         <div
@@ -103,7 +138,7 @@ const SupportButton = ({ onOpenModal }) => {
                 gap: '8px',
                 transition: 'all 0.5s ease',
                 opacity: isVisible ? (isSparkling ? 0.5 : 1) : 0,
-                transform: isVisible ? 'scale(1)' : 'scale(0.5)',
+                transform: isVisible ? (isSparkling ? 'scale(0.8)' : 'scale(1)') : 'scale(0.5)',
                 pointerEvents: isVisible ? 'auto' : 'none',
                 textDecoration: 'none'
             }}
@@ -193,6 +228,11 @@ const SupportButton = ({ onOpenModal }) => {
                     @keyframes rotate-glow {
                         from { transform: rotate(0deg); }
                         to { transform: rotate(360deg); }
+                    }
+                    @media (max-width: 600px) {
+                        body.reader-active .support-button-container {
+                            display: none !important;
+                        }
                     }
                 `}
             </style>
