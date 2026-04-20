@@ -11,6 +11,7 @@ const BackupsPage = ({ chapters, onNavigate }) => {
     const [error, setError] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [selectedCategory, setSelectedCategory] = useState('all');
+    const [promptSortOrder, setPromptSortOrder] = useState('created_desc');
     const [categories, setCategories] = useState([]);
     const [visitorStats, setVisitorStats] = useState([]);
     const [toast, setToast] = useState(null);
@@ -94,6 +95,16 @@ const BackupsPage = ({ chapters, onNavigate }) => {
             .map(char => 127397 + char.charCodeAt());
         return String.fromCodePoint(...codePoints);
     };
+
+    const filteredAndSortedPrompts = prompts
+        .filter(p => selectedCategory === 'all' || p.categoria === selectedCategory)
+        .sort((a, b) => {
+            if (promptSortOrder === 'created_desc') return new Date(b.created_at) - new Date(a.created_at);
+            if (promptSortOrder === 'created_asc') return new Date(a.created_at) - new Date(b.created_at);
+            if (promptSortOrder === 'updated_desc') return new Date(b.updated_at) - new Date(a.updated_at);
+            if (promptSortOrder === 'updated_asc') return new Date(a.updated_at) - new Date(b.updated_at);
+            return 0;
+        });
 
     if (loading) return (
         <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#aaa' }}>
@@ -308,13 +319,42 @@ const BackupsPage = ({ chapters, onNavigate }) => {
                                 ))}
                             </div>
 
-                            {prompts.filter(p => selectedCategory === 'all' || p.categoria === selectedCategory).length === 0 ? (
+                            {/* Sort Bar */}
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'flex-end',
+                                marginBottom: '15px',
+                                padding: '0 10px',
+                                alignItems: 'center',
+                                gap: '10px'
+                            }}>
+                                <span style={{ fontSize: '0.75rem', color: '#888' }}>Ordenar por:</span>
+                                <select 
+                                    value={promptSortOrder} 
+                                    onChange={e => setPromptSortOrder(e.target.value)}
+                                    style={{
+                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                        color: '#ccc',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        padding: '4px 8px',
+                                        borderRadius: '4px',
+                                        fontSize: '0.75rem',
+                                        outline: 'none',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <option value="created_desc" style={{background: '#111'}}>Creado (Más reciente)</option>
+                                    <option value="created_asc" style={{background: '#111'}}>Creado (Más antiguo)</option>
+                                    <option value="updated_desc" style={{background: '#111'}}>Editado (Más reciente)</option>
+                                    <option value="updated_asc" style={{background: '#111'}}>Editado (Más antiguo)</option>
+                                </select>
+                            </div>
+
+                            {filteredAndSortedPrompts.length === 0 ? (
                                 <p style={{ color: '#666', fontStyle: 'italic', textAlign: 'center' }}>No hay prompts en esta categoría.</p>
                             ) : (
                                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-                                    {prompts
-                                        .filter(p => selectedCategory === 'all' || p.categoria === selectedCategory)
-                                        .map(prompt => (
+                                    {filteredAndSortedPrompts.map(prompt => (
                                             <div key={prompt.id} style={{
                                                 backgroundColor: 'rgba(255, 255, 255, 0.03)',
                                                 border: '1px solid rgba(255, 255, 255, 0.1)',
