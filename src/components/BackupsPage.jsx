@@ -15,6 +15,7 @@ const BackupsPage = ({ chapters, onNavigate }) => {
     const [categories, setCategories] = useState([]);
     const [visitorStats, setVisitorStats] = useState([]);
     const [toast, setToast] = useState(null);
+    const [selectedSinglePrompt, setSelectedSinglePrompt] = useState(null);
 
     const isMaster = localStorage.getItem('isMaster') === 'true' || !!chapters?.some(c => c.is_vip); // Heuristic for master key
 
@@ -95,6 +96,41 @@ const BackupsPage = ({ chapters, onNavigate }) => {
             .map(char => 127397 + char.charCodeAt());
         return String.fromCodePoint(...codePoints);
     };
+
+    const EyeIcon = () => (
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+    );
+
+    const CopyIcon = () => (
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+    );
+
+    const IconButton = ({ onClick, icon: Icon, title, color = 'var(--accent-color, #ff4c4c)' }) => (
+        <span
+            onClick={(e) => { e.stopPropagation(); onClick(); }}
+            title={title}
+            className="action-icon-btn"
+            style={{
+                color: color,
+                cursor: 'pointer',
+                padding: '6px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+                borderRadius: '50%',
+                margin: '0 2px'
+            }}
+        >
+            <Icon />
+        </span>
+    );
 
     const filteredAndSortedPrompts = prompts
         .filter(p => selectedCategory === 'all' || p.categoria === selectedCategory)
@@ -353,56 +389,46 @@ const BackupsPage = ({ chapters, onNavigate }) => {
                             {filteredAndSortedPrompts.length === 0 ? (
                                 <p style={{ color: '#666', fontStyle: 'italic', textAlign: 'center' }}>No hay prompts en esta categoría.</p>
                             ) : (
-                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-                                    {filteredAndSortedPrompts.map(prompt => (
-                                            <div key={prompt.id} style={{
-                                                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                                borderRadius: '8px',
-                                                padding: isMobile ? '15px' : '20px',
-                                                display: 'flex',
-                                                flexDirection: 'column'
-                                            }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
-                                                    <h4 style={{ color: 'var(--accent-color)', fontSize: isMobile ? '1rem' : '1.2rem', margin: 0 }}>{prompt.titulo}</h4>
-                                                    <span style={{
-                                                        fontSize: '0.65rem',
-                                                        backgroundColor: 'rgba(255,255,255,0.05)',
-                                                        padding: '2px 8px',
-                                                        borderRadius: '4px',
-                                                        color: '#666',
-                                                        textTransform: 'uppercase'
-                                                    }}>
-                                                        {prompt.categoria_nombre || 'sin categoría'}
-                                                    </span>
-                                                </div>
-                                                <div style={{
-                                                    backgroundColor: '#000',
-                                                    padding: '15px',
-                                                    borderRadius: '4px',
-                                                    color: '#ccc',
-                                                    fontFamily: 'monospace',
-                                                    fontSize: isMobile ? '0.8rem' : '0.9rem',
-                                                    marginBottom: '15px',
-                                                    overflowY: 'auto',
-                                                    maxHeight: '200px',
-                                                    border: '1px solid #333'
-                                                }}>
-                                                    {prompt.prompt}
-                                                </div>
-                                                <button
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(prompt.prompt).then(() => {
-                                                            showToast("Prompt copiado con éxito");
-                                                        });
-                                                    }}
-                                                    className="btn"
-                                                    style={{ width: '100%', marginTop: 'auto', fontSize: '0.8rem' }}
-                                                >
-                                                    Copiar Prompt
-                                                </button>
-                                            </div>
-                                        ))}
+                                <div style={{ 
+                                    overflowX: 'auto',
+                                    backgroundColor: 'rgba(0,0,0,0.2)',
+                                    borderRadius: '8px',
+                                    border: '1px solid rgba(255,255,255,0.05)'
+                                }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', color: '#eee', fontSize: isMobile ? '0.8rem' : '0.9rem' }}>
+                                        <thead style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                                            <tr>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #333' }}>Título</th>
+                                                <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #333' }}>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredAndSortedPrompts.map(prompt => (
+                                                <tr key={prompt.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                                    <td style={{ padding: '12px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                            <span style={{ color: 'var(--accent-color)' }}>{prompt.titulo}</span>
+                                                            <span style={{
+                                                                fontSize: '0.65rem',
+                                                                backgroundColor: 'rgba(255,255,255,0.05)',
+                                                                padding: '2px 8px',
+                                                                borderRadius: '4px',
+                                                                color: '#666',
+                                                                textTransform: 'uppercase',
+                                                                whiteSpace: 'nowrap'
+                                                            }}>
+                                                                {prompt.categoria_nombre || 'sin categoría'}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '8px 4px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                                        <IconButton icon={CopyIcon} onClick={() => { navigator.clipboard.writeText(prompt.prompt); showToast("Prompt copiado"); }} title="Copiar" color="#00ffcc" />
+                                                        <IconButton icon={EyeIcon} onClick={() => setSelectedSinglePrompt(prompt)} title="Ver" />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             )}
                         </div>
@@ -416,6 +442,89 @@ const BackupsPage = ({ chapters, onNavigate }) => {
                             <AIBackupsTable chapters={chapters || []} />
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Modal for Prompt Detail */}
+            {selectedSinglePrompt && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, width: '100vw', height: '100vh',
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 2000,
+                    backdropFilter: 'blur(5px)'
+                }}>
+                    <div style={{
+                        width: '90%',
+                        maxWidth: '800px',
+                        backgroundColor: '#1a1a1a',
+                        border: '1px solid var(--accent-color, #ff4c4c)',
+                        borderRadius: '12px',
+                        padding: '30px',
+                        maxHeight: '85vh',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        position: 'relative',
+                        boxShadow: '0 0 30px rgba(255, 76, 76, 0.2)'
+                    }}>
+                        <button
+                            onClick={() => setSelectedSinglePrompt(null)}
+                            style={{
+                                position: 'absolute',
+                                top: '15px', right: '15px',
+                                background: 'transparent', border: 'none',
+                                color: '#666', fontSize: '1.5rem', cursor: 'pointer'
+                            }}
+                        >
+                            ✕
+                        </button>
+
+                        <h2 style={{ margin: '0 0 20px 0', color: '#fff', fontSize: '1.4rem' }}>
+                            Detalle de Prompt
+                        </h2>
+
+                        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '10px' }}>
+                            <div style={{
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '8px',
+                                padding: '15px'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                    <h4 style={{ margin: 0, color: '#fff' }}>{selectedSinglePrompt.titulo}</h4>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(selectedSinglePrompt.prompt);
+                                            showToast("Prompt copiado con éxito");
+                                        }}
+                                        style={{
+                                            fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)',
+                                            border: '1px solid #444', color: '#ccc',
+                                            padding: '4px 8px', borderRadius: '4px', cursor: 'pointer'
+                                        }}
+                                    >
+                                        Copiar
+                                    </button>
+                                </div>
+                                <div style={{
+                                    background: '#000', padding: '12px',
+                                    borderRadius: '4px', fontFamily: 'monospace',
+                                    fontSize: '0.85rem', color: '#00ffcc',
+                                    whiteSpace: 'pre-wrap', border: '1px solid rgba(0,255,204,0.1)'
+                                }}>
+                                    {selectedSinglePrompt.prompt}
+                                </div>
+                                {selectedSinglePrompt.notas && (
+                                    <p style={{ margin: '10px 0 0 0', fontSize: '0.8rem', color: '#888' }}>
+                                        <strong>Notas:</strong> {selectedSinglePrompt.notas}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -446,6 +555,14 @@ const BackupsPage = ({ chapters, onNavigate }) => {
                 @keyframes toastFadeIn {
                     from { opacity: 0; transform: translate(-50%, -20px); }
                     to { opacity: 1; transform: translate(-50%, 0); }
+                }
+                .action-icon-btn:hover {
+                    background-color: rgba(255, 255, 255, 0.08);
+                    transform: scale(1.15);
+                    filter: drop-shadow(0 0 5px currentColor);
+                }
+                .action-icon-btn:active {
+                    transform: scale(0.95);
                 }
             `}</style>
         </div>
